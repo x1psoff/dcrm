@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid mt-4 px-3 px-md-4">
+    <div class="card">
+        <div class="card-header bg-warning text-white">
+            <h3>Редактирование записи #{{ current_record.id }}</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="id_first_name" class="form-label">Индекс</label>
+                        {{ form.first_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_last_name" class="form-label">Наименование</label>
+                        {{ form.last_name }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="id_telegram" class="form-label">Telegram</label>
+                    {{ form.telegram }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_phone" class="form-label">Телефон</label>
+                    {{ form.phone }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_address" class="form-label">Адрес</label>
+                    {{ form.address }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_city" class="form-label">Город</label>
+                    {{ form.city }}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="id_status" class="form-label">
+                        <i class="bi bi-flag me-1"></i>
+                        Статус заказа
+                    </label>
+                    <select class="form-control" id="id_status" name="status" required>
+                        <option value="">Выберите статус</option>
+                        <option value="otrisovka" {% if form.status.value == 'otrisovka' %}selected{% endif %}>
+                            Отрисовка
+                        </option>
+                        <option value="zhdem_material" {% if form.status.value == 'zhdem_material' %}selected{% endif %}>
+                            Ждем прибытия материала
+                        </option>
+                        <option value="priekhal_v_ceh" {% if form.status.value == 'priekhal_v_ceh' %}selected{% endif %}>
+                            Приехал в цех
+                        </option>
+                        <option value="na_raspile" {% if form.status.value == 'na_raspile' %}selected{% endif %}>
+                            На распиле
+                        </option>
+                        <option value="zakaz_gotov" {% if form.status.value == 'zakaz_gotov' %}selected{% endif %}>
+                            Заказ готов
+                        </option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="id_advance" class="form-label">Аванс</label>
+                    {{ form.advance }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_contract_amount" class="form-label">Сумма по договору</label>
+                    {{ form.contract_amount }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_designer" class="form-label">Проектировщик</label>
+                    {{ form.designer }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Прикрепить файл:</label>
+                    <input type="file" name="file" class="form-control">
+                </div>
+                {% if current_record.files.all %}
+                <div class="mb-3">
+                    <label class="form-label">Файлы:</label>
+                    <ul class="list-group">
+                        {% for file in current_record.files.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{{ file.file.url }}" target="_blank">{{ file.file.name }}</a>
+                            <a href="{% url 'delete_file' file.id %}" class="btn btn-sm btn-danger">Удалить</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <a href="{% url 'record_detail' current_record.id %}" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

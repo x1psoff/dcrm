@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid mt-4 px-3 px-md-4">
+    <h2>Добавить комплектующие для записи #{{ record.id }}</h2>
+
+    <div class="row">
+        <!-- Левая колонка: Фильтры и сортировка -->
+        <div class="col-md-3">
+            <h4>Фильтры</h4>
+            <form method="get" id="filterForm">
+                <!-- Основные поля -->
+                <div class="form-group">
+                    {{ filter_form.name.label_tag }}
+                    {{ filter_form.name }}
+                </div>
+
+                <div class="form-group">
+                    {{ filter_form.category.label_tag }}
+                    {{ filter_form.category }}
+                </div>
+
+                <div class="form-group">
+                    {{ filter_form.brand.label_tag }}
+                    {{ filter_form.brand }}
+                </div>
+
+                <!-- Аккордеон для петель -->
+                <div class="filter-section mb-3">
+                    <div class="filter-header" onclick="toggleFilter('hingeFilters')">
+                        <h5 class="filter-title">Петли <span class="filter-arrow">▼</span></h5>
+                    </div>
+                    <div id="hingeFilters" class="filter-content" style="display: none;">
+                        <div class="form-group">
+                            {{ filter_form.hinge_angle.label_tag }}
+                            {{ filter_form.hinge_angle }}
+                        </div>
+
+                        <div class="form-group">
+                            {{ filter_form.hinge_closing_type.label_tag }}
+                            {{ filter_form.hinge_closing_type }}
+                        </div>
+
+                        <div class="form-group">
+                            {{ filter_form.response_type.label_tag }}
+                            {{ filter_form.response_type }}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="hinge_mounting_type">Тип монтажа (петли):</label>
+                            <select name="hinge_mounting_type" id="hinge_mounting_type" class="form-control">
+                                <option value="">Все</option>
+                                <option value="накладная" {% if request.GET.hinge_mounting_type == 'накладная' %}selected{% endif %}>Накладная</option>
+                                <option value="полунакладная" {% if request.GET.hinge_mounting_type == 'полунакладная' %}selected{% endif %}>Полунакладная</option>
+                                <option value="вкладная" {% if request.GET.hinge_mounting_type == 'вкладная' %}selected{% endif %}>Вкладная</option>
+                                <option value="фальш-планка" {% if request.GET.hinge_mounting_type == 'фальш-планка' %}selected{% endif %}>Фальш-планка</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Аккордеон для направляющих -->
+                <div class="filter-section mb-3">
+                    <div class="filter-header" onclick="toggleFilter('runnerFilters')">
+                        <h5 class="filter-title">Направляющие <span class="filter-arrow">▼</span></h5>
+                    </div>
+                    <div id="runnerFilters" class="filter-content" style="display: none;">
+                        <div class="form-group">
+                            {{ filter_form.runner_size.label_tag }}
+                            {{ filter_form.runner_size }}
+                        </div>
+
+                        <div class="form-group">
+                            {{ filter_form.mounting_type.label_tag }}
+                            {{ filter_form.mounting_type }}
+                        </div>
+
+
+                        
+                    </div>
+                </div>
+
+                <!-- Аккордеон для плит -->
+                <div class="filter-section mb-3">
+                    <div class="filter-header" onclick="toggleFilter('plitaFilters')">
+                        <h5 class="filter-title">Плиты <span class="filter-arrow">▼</span></h5>
+                    </div>
+                    <div id="plitaFilters" class="filter-content" style="display: none;">
+                        <div class="form-group">
+                            <label for="plita_material">Материал</label>
+                            <select name="plita_material" id="plita_material" class="form-control">
+                                <option value="">Все</option>
+                                {% for m in plita_material_choices %}
+                                    <option value="{{ m }}" {% if selected_plita_material == m %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="plita_thickness">Толщина (мм)</label>
+                            <select name="plita_thickness" id="plita_thickness" class="form-control">
+                                <option value="">Все</option>
+                                {% for t in plita_thickness_choices %}
+                                    <option value="{{ t }}" {% if selected_plita_thickness == t|stringformat:'s' %}selected{% endif %}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Применить фильтры</button>
+                <a href="{% url 'add_products_to_record' record.id %}" class="btn btn-secondary">Сбросить</a>
+            </form>
+        </div>
+
+        <!-- Правая колонка: Список товаров и плит -->
+        <div class="col-md-9">
+            {% if products_data %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Найдено</h4>
+                </div>
+
+                <form method="post" id="productsForm">
+                    {% csrf_token %}
+
+                    <div class="products-list">
+                        {% for item in products_data %}
+                            <div class="product-item mb-3 p-3 border rounded">
+                                <div class="form-check">
+                                    <input class="form-check-input product-checkbox" type="checkbox"
+                                           name="product_{{ item.product.id }}"
+                                           id="product_{{ item.product.id }}"
+                                           {% if item.is_checked %}checked{% endif %}>
+                                    <label class="form-check-label" for="product_{{ item.product.id }}">
+                                        <strong>{{ item.product.name }}</strong>
+                                        {% if item.product.brand %} - {{ item.product.brand.name }}{% endif %}
+                                        {% if item.product.category %} ({{ item.product.category.name }}){% endif %}
+                                        - {{ item.product.our_price }} ₽
+                                    </label>
+                                </div>
+
+                                <div class="product-details ms-4 mt-2">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Количество:</label>
+                                            <input type="number" name="quantity_{{ item.product.id }}"
+                                                   value="{{ item.quantity }}" min="1" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Кто покупает:</label>
+                                            <select name="buyer_{{ item.product.id }}" class="form-select form-select-sm">
+                                                <option value="Юра" {% if item.buyer == 'Юра' %}selected{% endif %}>Юра</option>
+                                                <option value="Олег" {% if item.buyer == 'Олег' %}selected{% endif %}>Олег</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Своя цена (₽) за единицу:</label>
+                                            <input type="number" step="0.01" min="0" name="custom_price_{{ item.product.id }}"
+                                                   value="{% if item.custom_price is not None %}{{ item.custom_price }}{% endif %}"
+                                                   class="form-control form-control-sm" placeholder="Оставьте пустым для цены товара">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        {# Добавляем плиты в ту же таблицу #}
+                        {% if plitas_data %}
+                            {% for item in plitas_data %}
+                                <div class="product-item mb-3 p-3 border rounded">
+                                    <div class="form-check">
+                                        <input class="form-check-input product-checkbox" type="checkbox"
+                                               name="plita_{{ item.plita.id }}"
+                                               id="plita_{{ item.plita.id }}"
+                                               {% if item.is_checked %}checked{% endif %}>
+                                        <label class="form-check-label" for="plita_{{ item.plita.id }}">
+                                            <strong>{{ item.plita.name }}</strong>
+                                            ({{ item.plita.material }}, {{ item.plita.thickness }}мм)
+                                            — {{ item.plita.price_per_square_meter }} ₽/м²
+                                        </label>
+                                    </div>
+
+                                    <div class="product-details ms-4 mt-2">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Количество (м²):</label>
+                                                <input type="number" name="plita_quantity_{{ item.plita.id }}"
+                                                       value="{{ item.quantity }}" step="0.01" min="0.01" class="form-control form-control-sm">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-info">Нет плит по текущим фильтрам.</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-success mt-3">Сохранить выбранные товары</button>
+                    <a href="{% url 'record_detail' record.id %}" class="btn btn-secondary mt-3">Назад к записи</a>
+                </form>
+            {% else %}
+                <div class="alert alert-info">
+                    <p>Нет продуктов, соответствующих фильтрам.</p>
+                    <a href="{% url 'add_products_to_record' record.id %}" class="btn btn-primary">Сбросить фильтры</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.products-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.product-item {
+    background-color: #f8f9fa;
+}
+
+.product-details .form-control,
+.product-details .form-select {
+    max-width: 150px;
+}
+
+.filter-section {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.filter-header {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.filter-header:hover {
+    background-color: #e9ecef;
+}
+
+.filter-title {
+    margin: 0;
+    font-size: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filter-content {
+    padding: 15px;
+    background-color: white;
+}
+
+.filter-arrow {
+    transition: transform 0.3s;
+}
+
+.filter-arrow.open {
+    transform: rotate(180deg);
+}
+</style>
+
+<script>
+// Функция для переключения видимости фильтров
+function toggleFilter(filterId) {
+    const filterContent = document.getElementById(filterId);
+    const filterArrow = filterContent.previousElementSibling.querySelector('.filter-arrow');
+
+    if (filterContent.style.display === 'none') {
+        filterContent.style.display = 'block';
+        filterArrow.classList.add('open');
+    } else {
+        filterContent.style.display = 'none';
+        filterArrow.classList.remove('open');
+    }
+}
+
+// Обработчик для формы продуктов
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('productsForm');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Отключаем все поля невыбранных продуктов перед отправкой
+            document.querySelectorAll('.product-item').forEach(function(item) {
+                const checkbox = item.querySelector('.product-checkbox');
+                if (!checkbox.checked) {
+                    item.querySelectorAll('input, select').forEach(function(field) {
+                        field.disabled = true;
+                    });
+                }
+            });
+        });
+    }
+
+    // Сохраняем состояние фильтров при обновлении страницы
+    const savedFiltersState = localStorage.getItem('filtersState');
+    if (savedFiltersState) {
+        const filtersState = JSON.parse(savedFiltersState);
+
+        for (const [filterId, isOpen] of Object.entries(filtersState)) {
+            const filterContent = document.getElementById(filterId);
+            if (filterContent) {
+                const filterArrow = filterContent.previousElementSibling.querySelector('.filter-arrow');
+
+                if (isOpen) {
+                    filterContent.style.display = 'block';
+                    if (filterArrow) filterArrow.classList.add('open');
+                }
+            }
+        }
+    }
+
+    // Сохраняем состояние фильтров при изменении
+    const filterHeaders = document.querySelectorAll('.filter-header');
+    filterHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const filterId = this.nextElementSibling.id;
+            const isOpen = this.nextElementSibling.style.display !== 'none';
+
+            // Сохраняем состояние в localStorage
+            let filtersState = JSON.parse(localStorage.getItem('filtersState') || '{}');
+            filtersState[filterId] = !isOpen;
+            localStorage.setItem('filtersState', JSON.stringify(filtersState));
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Заголовок и кнопки управления -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>📊 Редактор Excel</h1>
+                    <p class="text-muted">Редактирование комплектации для записи #{{ record_id }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'record_detail' record_id %}" class="btn btn-secondary">
+                        ← Назад к записи
+                    </a>
+                </div>
+            </div>
+
+            <!-- Панель управления -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button id="load-btn" class="btn btn-primary">
+                            <i class="bi bi-arrow-repeat"></i> Загрузить данные
+                        </button>
+                        <button id="save-btn" class="btn btn-success">
+                            <i class="bi bi-floppy"></i> Сохранить
+                        </button>
+                        <button id="download-btn" class="btn btn-info">
+                            <i class="bi bi-download"></i> Скачать Excel
+                        </button>
+                        <span id="save-status" class="badge bg-secondary align-self-center">
+                            Не загружено
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Область загрузки -->
+            <div id="loading" class="text-center py-5" style="display: none;">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p class="mt-3">Загрузка Excel файла...</p>
+            </div>
+
+            <!-- Контейнер для таблицы -->
+            <div id="excel-container" class="card" style="display: none;">
+                <div class="card-body p-0">
+                    <div id="hot"></div>
+                </div>
+            </div>
+
+            <!-- Сообщения об ошибках -->
+            <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные
+let hot;
+const recordId = {{ record_id }};
+let isDataLoaded = false;
+
+// Функция для получения CSRF токена
+function getCSRFToken() {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith('csrftoken=')) {
+            return cookie.substring('csrftoken='.length);
+        }
+    }
+    return '';
+}
+
+// Показать/скрыть элементы
+function showElement(id, show) {
+    document.getElementById(id).style.display = show ? 'block' : 'none';
+}
+
+// Показать сообщение об ошибке
+function showError(message) {
+    const errorElement = document.getElementById('error-message');
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+}
+
+// Скрыть сообщение об ошибке
+function hideError() {
+    document.getElementById('error-message').style.display = 'none';
+}
+
+// Обновить статус
+function updateStatus(text, type = 'secondary') {
+    const statusElement = document.getElementById('save-status');
+    statusElement.textContent = text;
+    statusElement.className = `badge bg-${type} align-self-center`;
+}
+
+// Загрузить данные Excel
+async function loadExcelData() {
+    try {
+        showElement('loading', true);
+        showElement('excel-container', false);
+        hideError();
+        updateStatus('Загрузка...', 'info');
+
+        const response = await fetch(`/record/${recordId}/excel-data/`);
+        const data = await response.json();
+
+        showElement('loading', false);
+
+        if (data.success) {
+            initHandsontable(data.data);
+            showElement('excel-container', true);
+            isDataLoaded = true;
+            updateStatus('Данные загружены', 'success');
+        } else {
+            showError('Ошибка загрузки: ' + (data.error || 'Неизвестная ошибка'));
+            updateStatus('Ошибка загрузки', 'danger');
+        }
+    } catch (error) {
+        showElement('loading', false);
+        showError('Ошибка сети: ' + error.message);
+        updateStatus('Ошибка сети', 'danger');
+        console.error('Error:', error);
+    }
+}
+
+// Инициализировать Handsontable
+function initHandsontable(data) {
+    const container = document.getElementById('hot');
+
+    // Удаляем предыдущий экземпляр если есть
+    if (hot) {
+        hot.destroy();
+    }
+
+    // Создаем новый экземпляр
+    hot = new Handsontable(container, {
+        data: data,
+        rowHeaders: true,
+        colHeaders: true,
+        height: 600,
+        width: '100%',
+        licenseKey: 'non-commercial-and-evaluation',
+        contextMenu: true,
+        manualColumnResize: true,
+        manualRowResize: true,
+        columnSorting: true,
+        stretchH: 'all',
+        afterChange: function() {
+            if (isDataLoaded) {
+                updateStatus('Не сохранено', 'warning');
+            }
+        }
+    });
+}
+
+// Сохранить данные
+async function saveExcelData() {
+    if (!hot || !isDataLoaded) {
+        alert('Сначала загрузите данные');
+        return;
+    }
+
+    try {
+        updateStatus('Сохранение...', 'info');
+
+        const data = hot.getData();
+        const csrfToken = getCSRFToken();
+
+        const response = await fetch(`/record/${recordId}/save-excel/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ data: data })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            updateStatus('Сохранено', 'success');
+            alert('✅ Данные успешно сохранены!');
+        } else {
+            updateStatus('Ошибка сохранения', 'danger');
+            alert('❌ Ошибка сохранения: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        updateStatus('Ошибка сети', 'danger');
+        alert('❌ Ошибка сети при сохранении');
+        console.error('Error:', error);
+    }
+}
+
+// Скачать Excel файл
+function downloadExcel() {
+    if (!isDataLoaded) {
+        alert('Сначала загрузите данные');
+        return;
+    }
+
+    window.open(`/record/${recordId}/download-excel/`, '_blank');
+}
+
+// Назначение обработчиков событий после загрузки DOM
+document.addEventListener('DOMContentLoaded', function() {
+    // Назначаем обработчики кнопкам
+    document.getElementById('load-btn').addEventListener('click', loadExcelData);
+    document.getElementById('save-btn').addEventListener('click', saveExcelData);
+    document.getElementById('download-btn').addEventListener('click', downloadExcel);
+
+    // Автоматически загружаем данные при открытии страницы
+    loadExcelData();
+});
+</script>
+
+<style>
+.handsontable {
+    font-size: 14px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.handsontable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+#hot {
+    min-height: 400px;
+}
+</style>
+{% endblock %}

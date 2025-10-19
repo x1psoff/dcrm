@@ -8,6 +8,6 @@ dataBase = mysql.connector.connect(
 
 cursorObjiect = dataBase.cursor()
 
-cursorObjiect.execute('CREATE DATABASE elderco')
+cursorObjiect.execute('CREATE DATABASE sait')
 
 print('готово')

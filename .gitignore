@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Environments and secrets
+.env
+.env.*
+.venv/
+venv/
+ENV/
+
+# IDE/Editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Django
+db.sqlite3
+*.log
+
+# Media: ignore all generated files, keep shipped templates
+media/*
+!media/templates/**
+!media/excel_templates/**
+!media/комплектация Кухни.xlsx
+
+# Uploads and generated exports (redundant but explicit)
+media/uploads/**
+media/records_excel/**
+
+# Data files
+data/**/*.csv
+data/**/*.xlsx
+
+# Node/JS (if ever added)
+node_modules/
+package-lock.json
+
+

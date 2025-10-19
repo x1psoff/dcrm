@@ -1,71 +1,331 @@
 {% extends 'base.html' %}
+{% block title %}Главная - Django CRM{% endblock %}
 
-{% block content%}
+{% block content %}
+<div class="container-fluid">
+  {% if user.is_authenticated %}
+    <!-- Заголовок и статистика -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="mb-0">
+            <i class="bi bi-list-ul me-2"></i>
+            Записи клиентов
+          </h1>
+          <a href="{% url 'add_record' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>
+            Добавить запись
+          </a>
+        </div>
+        
+        <!-- Статистические карточки -->
+        <div class="row mb-4">
+          <div class="col-md-2">
+            <div class="card text-center">
+              <div class="card-body">
+                <i class="bi bi-people text-primary fs-1"></i>
+                <h6 class="card-title mt-2">Всего записей</h6>
+                <p class="card-text fs-4 fw-bold">{{ records|length }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center">
+              <div class="card-body">
+                <i class="bi bi-pencil-square text-info fs-1"></i>
+                <h6 class="card-title mt-2">Отрисовка</h6>
+                <p class="card-text fs-4 fw-bold">{{ status_stats.otrisovka }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center">
+              <div class="card-body">
+                <i class="bi bi-clock text-warning fs-1"></i>
+                <h6 class="card-title mt-2">Ждем материала</h6>
+                <p class="card-text fs-4 fw-bold">{{ status_stats.zhdem_material }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center">
+              <div class="card-body">
+                <i class="bi bi-building text-primary fs-1"></i>
+                <h6 class="card-title mt-2">В цехе</h6>
+                <p class="card-text fs-4 fw-bold">{{ status_stats.priekhal_v_ceh }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center">
+              <div class="card-body">
+                <i class="bi bi-scissors text-secondary fs-1"></i>
+                <h6 class="card-title mt-2">На распиле</h6>
+                <p class="card-text fs-4 fw-bold">{{ status_stats.na_raspile }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="card text-center">
+              <div class="card-body">
+                <i class="bi bi-check-circle text-success fs-1"></i>
+                <h6 class="card-title mt-2">Готово</h6>
+                <p class="card-text fs-4 fw-bold">{{ status_stats.zakaz_gotov }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- Таблица записей -->
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-table me-2"></i>
+          Список записей
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        {% if records %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">
+                    <i class="bi bi-hash me-1"></i>
+                    ID
+                  </th>
+                  <th scope="col">
+                    <i class="bi bi-person me-1"></i>
+                    Клиент
+                  </th>
+                  <th scope="col">
+                    <i class="bi bi-flag me-1"></i>
+                    Статус
+                  </th>
+                  <th scope="col">
+                    <i class="bi bi-cash-stack me-1"></i>
+                    Сумма по договору
+                  </th>
+                  <th scope="col">
+                    <i class="bi bi-calendar me-1"></i>
+                    Дата создания
+                  </th>
+                  <th scope="col" class="text-center">
+                    <i class="bi bi-gear me-1"></i>
+                    Действия
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for record in records %}
+                  <tr>
+                    <td>
+                      <span class="badge bg-secondary">#{{ record.id }}</span>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                          {{ record.first_name|first|upper }}{{ record.last_name|first|upper }}
+                        </div>
+                        <div>
+                          <a href="{% url 'record_detail' record.id %}" class="text-decoration-none fw-semibold">
+                            {{ record.first_name }} {{ record.last_name }}
+                          </a>
+                          {% if record.telegram %}
+                            <br>
+                            <small class="text-muted">
+                              <i class="bi bi-telegram me-1"></i>
+                              @{{ record.telegram }}
+                            </small>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {% if record.status %}
+                        {% if record.status == 'otrisovka' %}
+                          <span class="badge bg-info">
+                            <i class="bi bi-pencil-square me-1"></i>Отрисовка
+                          </span>
+                        {% elif record.status == 'zhdem_material' %}
+                          <span class="badge bg-warning">
+                            <i class="bi bi-clock me-1"></i>Ждем материала
+                          </span>
+                        {% elif record.status == 'priekhal_v_ceh' %}
+                          <span class="badge bg-primary">
+                            <i class="bi bi-building me-1"></i>В цехе
+                          </span>
+                        {% elif record.status == 'na_raspile' %}
+                          <span class="badge bg-secondary">
+                            <i class="bi bi-scissors me-1"></i>На распиле
+                          </span>
+                        {% elif record.status == 'zakaz_gotov' %}
+                          <span class="badge bg-success">
+                            <i class="bi bi-check-circle me-1"></i>Готов
+                          </span>
+                        {% else %}
+                          <span class="badge bg-light text-dark">{{ record.get_status_display }}</span>
+                        {% endif %}
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if record.contract_amount %}
+                        <span class="fw-semibold">{{ record.contract_amount|floatformat:2 }} ₽</span>
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <small class="text-muted">
+                        {{ record.created_at|date:"d.m.Y H:i" }}
+                      </small>
+                    </td>
+                    <td class="text-center">
+                      <div class="btn-group" role="group">
+                        <a href="{% url 'record_detail' record.id %}" class="btn btn-sm btn-outline-primary" title="Просмотр">
+                          <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{% url 'update_record' record.id %}" class="btn btn-sm btn-outline-secondary" title="Редактировать">
+                          <i class="bi bi-pencil"></i>
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+            <h5 class="text-muted mt-3">Записей не найдено</h5>
+            <p class="text-muted">Начните с создания первой записи клиента</p>
+            <a href="{% url 'add_record' %}" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>
+              Добавить запись
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <!-- Форма входа -->
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card fade-in">
+          <div class="card-header text-center">
+            <h3 class="mb-0">
+              <i class="bi bi-box-arrow-in-right me-2"></i>
+              Вход в систему
+            </h3>
+          </div>
+          <div class="card-body">
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show">
+                  <i class="bi bi-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+            
+            <form method="post" action="{% url 'home' %}" class="needs-validation" novalidate>
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="username" class="form-label">
+                  <i class="bi bi-person me-1"></i>
+                  Имя пользователя
+                </label>
+                <input type="text" class="form-control" id="username" name="username" required>
+                <div class="invalid-feedback">
+                  Пожалуйста, введите имя пользователя.
+                </div>
+              </div>
+              
+              <div class="mb-4">
+                <label for="password" class="form-label">
+                  <i class="bi bi-lock me-1"></i>
+                  Пароль
+                </label>
+                <input type="password" class="form-control" id="password" name="password" required>
+                <div class="invalid-feedback">
+                  Пожалуйста, введите пароль.
+                </div>
+              </div>
+              
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>
+                  Войти
+                </button>
+              </div>
+            </form>
+            
+            <hr class="my-4">
+            
+            <div class="text-center">
+              <p class="text-muted mb-0">Нет аккаунта?</p>
+              <a href="{% url 'register' %}" class="btn btn-outline-secondary mt-2">
+                <i class="bi bi-person-plus me-1"></i>
+                Зарегистрироваться
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
 
+<style>
+  .avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+  }
+  
+  .table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+  }
+  
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+  }
+  
+  .btn-group .btn {
+    border-radius: var(--radius-sm);
+  }
+  
+  .btn-group .btn:not(:last-child) {
+    margin-right: 2px;
+  }
+</style>
 
-{% if user.is_authenticated %}
-<h1>Hello World</h1>
-
-<table class="table table-striped table-hover table-bordered">
-  <thead class="table-dark">
-    <tr>
-      <th scope="col">Name</th>
-      <th scope="col">Email</th>
-      <th scope="col">Phone</th>
-      <th scope="col">Address</th>
-      <th scope="col">City</th>
-      <th scope="col">State</th>
-      <th scope="col">Zipcode</th>
-      <th scope="col">Created At</th>
-      <th scope="col">ID</th>
-    </tr>
-  </thead>
-  <tbody>
-
-{% if records %}
-    {% for record in records %}
-        <tr>
-            <td>{{ record.first_name }}
-            {{ record.last_name }}</td>
-            <td>{{ record.email}}</td>
-            <td>{{ record.phone}}</td>
-            <td>{{ record.address }}</td>
-            <td>{{ record.city }}</td>
-            <td>{{ record.state }}</td>
-            <td>{{ record.zipcode }}</td>
-            <td>{{ record.created_at }}</td>
-            <td>{{ record.id }}</td>
-        </td>
-        <br/>
-    {% endfor %}
-{% endif %}
-
-     </tbody>
-    </table>
-
-{% else %}
-<h1>Login</h1>
-
-
-<form method="POST" action="{% url 'home' %}">
-    {% csrf_token %}
-    <form>
-  <div class="mb-3">
-    <input type="text" class="form-control" name="username"
-           , placeholder="Логин" required>
-
-  </div>
-  <div class="mb-3">
-    <input type="password" class="form-control" name="password"
-           , placeholder="Пароль" required>
-  </div>
-  <button type="submit" class="btn btn-secondary">Вход</button>
-</form>
-</form>
-
-
-
-
-{% endif %}
+<script>
+// Bootstrap form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
 {% endblock %}

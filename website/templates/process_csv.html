@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container">
+    <h1>Обработка файлов для {{ record.first_name }} {{ record.last_name }}</h1>
+    <p class="text-muted">ID записи: {{ record.id }}</p>
+
+    <div class="alert alert-info">
+        Успешно обработано: {{ success_count }} из {{ files_data|length }} файлов
+    </div>
+
+    {% if files_data|length == 0 %}
+    <div class="alert alert-warning">
+        Нет прикреплённых файлов для этой записи. Загрузите CSV в разделе «Редактировать» записи, затем вернитесь на эту страницу.
+    </div>
+    {% endif %}
+
+{% if total_area %}
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">
+        <h5>📊 Итоговый расчет</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Общая площадь:</h6>
+                <p class="h4">{{ total_area }} м²</p>
+            </div>
+            {% if designer_salary %}
+            <div class="col-md-6">
+                <h6>Проектировщик:</h6>
+                <p class="mb-1">{{ designer_info }}</p>
+                <p class="h4 text-success">{{ designer_salary|floatformat:2 }} ₽</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% for file in files_data %}
+    <div class="card mb-4 {% if not file.success %}border-danger{% endif %}">
+        <div class="card-header {% if not file.success %}bg-danger text-white{% endif %}">
+            <h5>{{ file.file_name }}</h5>
+        </div>
+        <div class="card-body">
+            {% if file.success %}
+                <div class="row">
+                    <div class="col-md-4">
+                        <p><strong>Сумма для 16:</strong> {{ file.sum_16 }} м²</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Сумма для 18:</strong> {{ file.sum_18 }} м²</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Всего строк:</strong> {{ file.data|length }}</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <!-- Таблица данных -->
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-danger">
+                    {{ file.error }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

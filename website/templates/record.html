@@ -1,0 +1,676 @@
+{% extends 'base.html' %}
+{% block title %}{{ customer_record.first_name }} {{ customer_record.last_name }} - Django CRM{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4">
+    <!-- Заголовок записи -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1">
+                        <i class="bi bi-person-circle me-2"></i>
+                        {{ customer_record.first_name }} {{ customer_record.last_name }}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-hash me-1"></i>
+                        ID: {{ customer_record.id }} | 
+                        <i class="bi bi-calendar me-1"></i>
+                        Создано: {{ customer_record.created_at|date:"d.m.Y H:i" }}
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Назад
+                    </a>
+                    {% if request.user.is_authenticated %}
+                        <a href="{% url 'update_record' customer_record.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i>
+                            Редактировать
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="bi bi-trash me-1"></i>
+                            Удалить
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основная информация и расчеты -->
+    <div class="row mb-4">
+        <!-- Данные клиента -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-lines-fill me-2"></i>
+                        Данные клиента
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-telegram text-primary me-2"></i>
+                                <div>
+                                    <small class="text-muted">Telegram</small>
+                                    <div class="fw-semibold">
+                                        {% if customer_record.telegram %}@{{ customer_record.telegram }}{% else %}-{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-telephone text-success me-2"></i>
+                                <div>
+                                    <small class="text-muted">Телефон</small>
+                                    <div class="fw-semibold">{{ customer_record.phone|default:"-" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-geo-alt text-warning me-2"></i>
+                                <div>
+                                    <small class="text-muted">Адрес</small>
+                                    <div class="fw-semibold">{{ customer_record.address|default:"-" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-building text-info me-2"></i>
+                                <div>
+                                    <small class="text-muted">Город</small>
+                                    <div class="fw-semibold">{{ customer_record.city|default:"-" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-flag text-danger me-2"></i>
+                                <div>
+                                    <small class="text-muted">Статус заказа</small>
+                                    <div class="fw-semibold">
+                                        {% if customer_record.status %}
+                                            {% if customer_record.status == 'otrisovka' %}
+                                                <span class="badge bg-info">
+                                                    <i class="bi bi-pencil-square me-1"></i>Отрисовка
+                                                </span>
+                                            {% elif customer_record.status == 'zhdem_material' %}
+                                                <span class="badge bg-warning">
+                                                    <i class="bi bi-clock me-1"></i>Ждем прибытия материала
+                                                </span>
+                                            {% elif customer_record.status == 'priekhal_v_ceh' %}
+                                                <span class="badge bg-primary">
+                                                    <i class="bi bi-building me-1"></i>Приехал в цех
+                                                </span>
+                                            {% elif customer_record.status == 'na_raspile' %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="bi bi-scissors me-1"></i>На распиле
+                                                </span>
+                                            {% elif customer_record.status == 'zakaz_gotov' %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle me-1"></i>Заказ готов
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark">{{ customer_record.get_status_display }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Оплата -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cash-stack me-2"></i>
+                        Оплата
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Аванс</span>
+                                <span class="fw-bold fs-5">
+                                    {% if customer_record.advance %}{{ customer_record.advance|floatformat:2 }} ₽{% else %}-{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Сумма по договору</span>
+                                <span class="fw-bold fs-5">
+                                    {% if customer_record.contract_amount %}{{ customer_record.contract_amount|floatformat:2 }} ₽{% else %}-{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% if customer_record.designer %}
+                        <div class="col-12">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-person-workspace text-primary me-2"></i>
+                                <div>
+                                    <small class="text-muted">Проектировщик</small>
+                                    <div class="fw-semibold">{{ customer_record.designer.name }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Расчет -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calculator me-2"></i>
+                        Расчет
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Комплектующие</span>
+                                <span class="fw-semibold">{{ total_components|floatformat:2 }} ₽</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Непланируемые расходы</span>
+                                <span class="fw-semibold">{{ total_expenses|floatformat:2 }} ₽</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Проектировщик{% if designer_info %} ({{ designer_info }}){% endif %}</span>
+                                <span class="fw-semibold">{{ designer_salary|floatformat:2 }} ₽</span>
+                            </div>
+                        </div>
+                        {% if customer_record.designer and customer_record.designer.method and 'погон' in customer_record.designer.method.name|lower %}
+                        <div class="col-12">
+                            <form method="post" action="{% url 'set_designer_manual_salary' customer_record.id %}" class="d-flex align-items-center gap-2">
+                                {% csrf_token %}
+                                <span class="text-muted small">Ручной ввод:</span>
+                                <input type="number" step="0.01" name="designer_manual_salary" id="designer_manual_salary" 
+                                       class="form-control form-control-sm" value="{{ customer_record.designer_manual_salary|default_if_none:'' }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-3">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="fw-bold fs-5">Итого</span>
+                        <span class="fw-bold fs-4 text-primary">{{ total_amount|floatformat:2 }} ₽</span>
+                    </div>
+
+                    <!-- Распределение моржи -->
+                    <div class="border rounded p-3 bg-light">
+                        <form method="post" action="{% url 'set_margin_flags' customer_record.id %}">
+                            {% csrf_token %}
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-semibold small">Распределение моржи:</span>
+                                <span class="text-muted small">Моржа всего: {{ margin_total|floatformat:2 }} ₽</span>
+                            </div>
+                            <div class="d-flex gap-3 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="margin_yura" value="1" 
+                                           id="margin_yura" {% if customer_record.margin_yura %}checked{% endif %}>
+                                    <label class="form-check-label small" for="margin_yura">Юра</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="margin_oleg" value="1" 
+                                           id="margin_oleg" {% if customer_record.margin_oleg %}checked{% endif %}>
+                                    <label class="form-check-label small" for="margin_oleg">Олег</label>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between small mb-2">
+                                <span>Моржа Юра: <strong>{{ margin_distribution.Юра|floatformat:2 }} ₽</strong></span>
+                                <span>Моржа Олег: <strong>{{ margin_distribution.Олег|floatformat:2 }} ₽</strong></span>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary w-100">Сохранить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Непланируемые расходы -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-receipt me-2"></i>
+                        Непланируемые расходы
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Форма добавления расхода -->
+                    <form method="post" action="{% url 'add_unplanned_expense' customer_record.id %}" class="row g-3 mb-4">
+                        {% csrf_token %}
+                        <div class="col-md-4">
+                            <label for="item" class="form-label">Предмет расхода</label>
+                            <input type="text" name="item" id="item" placeholder="Введите предмет расхода" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="price" class="form-label">Цена</label>
+                            <div class="input-group">
+                                <input type="number" name="price" id="price" placeholder="0.00" class="form-control" step="0.01" min="0" required>
+                                <span class="input-group-text">₽</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="spent_by" class="form-label">Кто потратил</label>
+                            <select name="spent_by" id="spent_by" class="form-control">
+                                <option value="Юра">Юра</option>
+                                <option value="Олег">Олег</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-circle me-1"></i>
+                                Добавить
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Список расходов -->
+                    {% if customer_record.unplanned_expenses.all %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <i class="bi bi-box me-1"></i>
+                                            Предмет
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-cash me-1"></i>
+                                            Цена
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-person me-1"></i>
+                                            Кто потратил
+                                        </th>
+                                        <th class="text-center">
+                                            <i class="bi bi-gear me-1"></i>
+                                            Действия
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in customer_record.unplanned_expenses.all %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ expense.item }}</td>
+                                        <td>
+                                            <span class="fw-bold text-success">{{ expense.price|floatformat:2 }} ₽</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ expense.spent_by }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{% url 'delete_unplanned_expense' expense.id %}" 
+                                               class="btn btn-sm btn-outline-danger" 
+                                               onclick="return confirm('Удалить этот расход?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="2">Итого расходов:</th>
+                                        <th class="text-success">{{ total_expenses|floatformat:2 }} ₽</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-receipt text-muted" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted mt-2">Нет добавленных расходов</h6>
+                            <p class="text-muted small">Добавьте первый непланируемый расход</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Комплектация мебели -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-boxes me-2"></i>
+                            Комплектация мебели
+                        </h5>
+                        <div class="d-flex gap-3">
+                            <span class="badge bg-primary">
+                                <i class="bi bi-arrow-right me-1"></i>
+                                Направляющие: {{ runner_count }}
+                            </span>
+                            <span class="badge bg-success">
+                                <i class="bi bi-arrow-right me-1"></i>
+                                Петли: {{ hinge_count }}
+                            </span>
+                            <span class="badge bg-warning">
+                                <i class="bi bi-arrow-right me-1"></i>
+                                Плиты: {{ plita_count }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if unified_components %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <i class="bi bi-tag me-1"></i>
+                                            Тип
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-box me-1"></i>
+                                            Название
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-folder me-1"></i>
+                                            Категория
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-award me-1"></i>
+                                            Бренд
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-list-ul me-1"></i>
+                                            Характеристики
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-currency-exchange me-1"></i>
+                                            Цена за ед.
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-hash me-1"></i>
+                                            Количество
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-cash-stack me-1"></i>
+                                            Сумма
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-person me-1"></i>
+                                            Купил
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for component in unified_components %}
+                                        <tr class="component-row component-type-{{ component.type|lower }}">
+                                            <td>
+                                                {% if component.type == 'Петли' %}
+                                                    <span class="badge bg-success">{{ component.type }}</span>
+                                                {% elif component.type == 'Направляющие' %}
+                                                    <span class="badge bg-primary">{{ component.type }}</span>
+                                                {% elif component.type == 'Плиты' %}
+                                                    <span class="badge bg-warning">{{ component.type }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ component.type }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="fw-semibold">{{ component.name }}</td>
+                                            <td>{{ component.category }}</td>
+                                            <td>{{ component.brand }}</td>
+                                            <td class="component-specs">
+                                                {% if component.is_product %}
+                                                    {% if component.specifications.hinge_angle %}<span class="spec">Угол: {{ component.specifications.hinge_angle }}</span>{% endif %}
+                                                    {% if component.specifications.hinge_closing_type %}<span class="spec">Закрывание: {{ component.specifications.hinge_closing_type }}</span>{% endif %}
+                                                    {% if component.specifications.runner_size %}<span class="spec">Размер: {{ component.specifications.runner_size }}</span>{% endif %}
+                                                    {% if component.specifications.response_type %}<span class="spec">Ответка: {{ component.specifications.response_type }}</span>{% endif %}
+                                                    {% if component.specifications.mounting_type %}<span class="spec">Тип: {{ component.specifications.mounting_type }}</span>{% endif %}
+                                                {% else %}
+                                                    {% if component.specifications.material %}<span class="spec">Материал: {{ component.specifications.material }}</span>{% endif %}
+                                                    {% if component.specifications.thickness %}<span class="spec">Толщина: {{ component.specifications.thickness }}</span>{% endif %}
+                                                    {% if component.specifications.color %}<span class="spec">Цвет: {{ component.specifications.color }}</span>{% endif %}
+                                                {% endif %}
+                                            </td>
+                                            <td class="fw-semibold">{{ component.unit_price|floatformat:2 }} ₽</td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">{{ component.quantity }}</span>
+                                            </td>
+                                            <td class="fw-bold text-success">{{ component.line_total|floatformat:2 }} ₽</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ component.buyer }}</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th colspan="7" class="text-end">
+                                            <i class="bi bi-calculator me-1"></i>
+                                            Итого по комплектующим:
+                                        </th>
+                                        <th class="fw-bold fs-5 text-success">{{ total_components|floatformat:2 }} ₽</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-boxes text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3">Нет комплектующих</h5>
+                            <p class="text-muted">Добавьте комплектующие для этой записи</p>
+                            <a href="{% url 'add_products_to_record' customer_record.id %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i>
+                                Добавить комплектующие
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    <!-- Управление комплектацией -->
+                    {% if unified_components %}
+                        <div class="mt-4 pt-3 border-top">
+                            <h6 class="mb-3">
+                                <i class="bi bi-gear me-2"></i>
+                                Управление комплектацией
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{% url 'add_products_to_record' customer_record.id %}" class="btn btn-outline-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>
+                                    Добавить комплектующие
+                                </a>
+                                <a href="{% url 'clear_products' customer_record.id %}" 
+                                   class="btn btn-outline-warning" 
+                                   onclick="return confirm('Очистить все комплектующие?')">
+                                    <i class="bi bi-trash me-1"></i>
+                                    Очистить
+                                </a>
+                                <a href="{% url 'export_products' customer_record.id %}" class="btn btn-outline-success">
+                                    <i class="bi bi-download me-1"></i>
+                                    Экспорт
+                                </a>
+                                <a href="{% url 'process_csv_by_pk' customer_record.id %}" class="btn btn-outline-info">
+                                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>
+                                    Смета
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Прикреплённые файлы -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-paperclip me-2"></i>
+                        Прикреплённые файлы
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if customer_record.files.all %}
+                        <div class="row g-3">
+                            {% for file in customer_record.files.all %}
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card border">
+                                        <div class="card-body d-flex align-items-center">
+                                            <i class="bi bi-file-earmark text-primary fs-3 me-3"></i>
+                                            <div class="flex-grow-1">
+                                                <h6 class="card-title mb-1">{{ file.file.name|cut:"uploads/" }}</h6>
+                                                <small class="text-muted">Файл проекта</small>
+                                            </div>
+                                            <div class="btn-group">
+                                                <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                                <a href="{% url 'process_csv_by_pk' customer_record.id %}" class="btn btn-sm btn-outline-success">
+                                                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-paperclip text-muted" style="font-size: 3rem;"></i>
+                            <h6 class="text-muted mt-2">Нет прикреплённых файлов</h6>
+                            <p class="text-muted small">Файлы проекта будут отображаться здесь</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для подтверждения удаления -->
+{% if request.user.is_authenticated %}
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">
+                        <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                        Подтверждение удаления
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Вы уверены, что хотите удалить эту запись?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>{{ customer_record.first_name }} {{ customer_record.last_name }}</strong> (ID: {{ customer_record.id }})
+                    </div>
+                    <p class="text-muted small">Это действие нельзя отменить.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Отмена
+                    </button>
+                    <form method="post" action="{% url 'delete_record' customer_record.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>
+                            Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<style>
+    .component-specs {
+        font-size: 0.875rem;
+        line-height: 1.4;
+    }
+
+    .component-specs .spec {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--gray-600);
+        font-size: 0.8rem;
+    }
+
+    .component-specs .spec:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Адаптивность для таблиц */
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.5rem 0.25rem;
+        }
+        
+        .component-specs {
+            font-size: 0.75rem;
+        }
+        
+        .badge {
+            font-size: 0.7rem;
+        }
+        
+        .btn-group .btn {
+            padding: 0.25rem 0.5rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .d-flex.gap-3 {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+        
+        .btn-group {
+            flex-direction: column;
+        }
+        
+        .btn-group .btn {
+            border-radius: var(--radius-sm) !important;
+            margin-bottom: 2px;
+        }
+    }
+</style>
+{% endblock %}

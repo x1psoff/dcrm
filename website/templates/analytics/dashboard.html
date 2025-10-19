@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+{% block title %}Аналитика - Django CRM{% endblock %}
+
+{% block extra_css %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .analytics-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: var(--spacing-md) 0;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+        color: white;
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        text-align: center;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .stat-card h3 {
+        font-size: var(--text-2xl);
+        font-weight: 700;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .stat-card p {
+        font-size: var(--text-sm);
+        opacity: 0.9;
+        margin: 0;
+    }
+    
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--spacing-lg);
+    }
+    
+    .analytics-header {
+        background: linear-gradient(135deg, var(--gray-800), var(--gray-900));
+        color: white;
+        padding: var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-xl);
+        text-align: center;
+    }
+    
+    .analytics-header h1 {
+        margin: 0;
+        font-size: var(--text-4xl);
+        font-weight: 700;
+    }
+    
+    .analytics-header p {
+        margin: var(--spacing-sm) 0 0 0;
+        opacity: 0.8;
+        font-size: var(--text-lg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4">
+    <!-- Заголовок -->
+    <div class="analytics-header">
+        <h1>
+            <i class="bi bi-graph-up me-3"></i>
+            Панель аналитики
+        </h1>
+        <p>Анализ данных и статистика по заказам</p>
+    </div>
+
+    <!-- Общая статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>{{ total_orders }}</h3>
+                <p>
+                    <i class="bi bi-list-ul me-1"></i>
+                    Всего заказов
+                </p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, var(--success-color), #047857);">
+                <h3>{{ total_contract_amount|floatformat:0 }} ₽</h3>
+                <p>
+                    <i class="bi bi-cash-stack me-1"></i>
+                    Общая сумма договоров
+                </p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, var(--warning-color), #b45309);">
+                <h3>{{ total_components_cost|floatformat:0 }} ₽</h3>
+                <p>
+                    <i class="bi bi-boxes me-1"></i>
+                    Стоимость комплектующих
+                </p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, var(--info-color), #0e7490);">
+                <h3>{{ avg_margin|floatformat:0 }} ₽</h3>
+                <p>
+                    <i class="bi bi-graph-up me-1"></i>
+                    Средняя моржа
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Диаграммы -->
+    <div class="analytics-grid">
+        <!-- Моржа по месяцам -->
+        <div class="analytics-card">
+            <h4>
+                <i class="bi bi-calendar-month me-2"></i>
+                Моржа по месяцам {{ current_year }}
+            </h4>
+            <div class="chart-container">
+                <canvas id="marginChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Распределение моржи -->
+        <div class="analytics-card">
+            <h4>
+                <i class="bi bi-pie-chart me-2"></i>
+                Распределение моржи
+            </h4>
+            <div class="chart-container">
+                <canvas id="marginDistributionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Статусы заказов -->
+        <div class="analytics-card">
+            <h4>
+                <i class="bi bi-bar-chart me-2"></i>
+                Статусы заказов
+            </h4>
+            <div class="chart-container">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Проектировщики -->
+        <div class="analytics-card">
+            <h4>
+                <i class="bi bi-people me-2"></i>
+                Топ проектировщиков
+            </h4>
+            <div class="chart-container">
+                <canvas id="designerChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Заказы по дням недели -->
+        <div class="analytics-card">
+            <h4>
+                <i class="bi bi-calendar-week me-2"></i>
+                Заказы по дням недели
+            </h4>
+            <div class="chart-container">
+                <canvas id="weekdayChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Детальная статистика -->
+        <div class="analytics-card">
+            <h4>
+                <i class="bi bi-list-check me-2"></i>
+                Детальная статистика
+            </h4>
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><strong>Общие расходы:</strong></td>
+                                <td class="text-end">{{ total_expenses|floatformat:2 }} ₽</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Моржа Юра:</strong></td>
+                                <td class="text-end">{{ margin_distribution.0.value|floatformat:2 }} ₽</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Моржа Олег:</strong></td>
+                                <td class="text-end">{{ margin_distribution.1.value|floatformat:2 }} ₽</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Общая моржа:</strong></td>
+                                <td class="text-end">{{ margin_distribution.0.value|add:margin_distribution.1.value|floatformat:2 }} ₽</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Данные для диаграмм
+const marginData = {{ margin_by_month|safe }};
+const marginDistributionData = {{ margin_distribution|safe }};
+const statusData = {{ status_stats|safe }};
+const designerData = {{ designer_stats|safe }};
+const weekdayData = {{ weekday_stats|safe }};
+
+// Настройки Chart.js
+Chart.defaults.font.family = 'Inter, sans-serif';
+Chart.defaults.color = '#64748b';
+
+// Моржа по месяцам
+const marginCtx = document.getElementById('marginChart').getContext('2d');
+new Chart(marginCtx, {
+    type: 'line',
+    data: {
+        labels: marginData.map(item => item.month),
+        datasets: [{
+            label: 'Моржа (₽)',
+            data: marginData.map(item => item.margin),
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toLocaleString() + ' ₽';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Распределение моржи
+const marginDistCtx = document.getElementById('marginDistributionChart').getContext('2d');
+new Chart(marginDistCtx, {
+    type: 'doughnut',
+    data: {
+        labels: marginDistributionData.map(item => item.name),
+        datasets: [{
+            data: marginDistributionData.map(item => item.value),
+            backgroundColor: ['#2563eb', '#059669'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true
+                }
+            }
+        }
+    }
+});
+
+// Статусы заказов
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'bar',
+    data: {
+        labels: statusData.map(item => item.name),
+        datasets: [{
+            label: 'Количество заказов',
+            data: statusData.map(item => item.count),
+            backgroundColor: [
+                '#3b82f6', '#f59e0b', '#8b5cf6', '#6b7280', '#10b981'
+            ],
+            borderRadius: 8,
+            borderSkipped: false
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Проектировщики
+const designerCtx = document.getElementById('designerChart').getContext('2d');
+new Chart(designerCtx, {
+    type: 'horizontalBar',
+    data: {
+        labels: designerData.map(item => item.name),
+        datasets: [{
+            label: 'Количество заказов',
+            data: designerData.map(item => item.count),
+            backgroundColor: '#8b5cf6',
+            borderRadius: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Заказы по дням недели
+const weekdayCtx = document.getElementById('weekdayChart').getContext('2d');
+new Chart(weekdayCtx, {
+    type: 'radar',
+    data: {
+        labels: weekdayData.map(item => item.day),
+        datasets: [{
+            label: 'Количество заказов',
+            data: weekdayData.map(item => item.count),
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+            borderWidth: 2,
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            r: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

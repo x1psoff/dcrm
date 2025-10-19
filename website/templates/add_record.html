@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Добавить запись - Django CRM{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-3 px-md-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+            <div class="card fade-in">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Новая запись
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Не удалось создать запись.</strong>
+                        <ul class="mb-0 mt-2">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li>
+                                    {% if field != '__all__' %}<strong>{{ field }}:</strong> {% endif %}{{ error }}
+                                </li>
+                            {% endfor %}
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{% url 'add_record' %}" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">
+                                    <i class="bi bi-hash me-1"></i>
+                                    Индекс
+                                </label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ form.first_name.value|default_if_none:'' }}" 
+                                       placeholder="Введите индекс записи" required>
+                                <div class="invalid-feedback">
+                                    Пожалуйста, введите индекс.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">
+                                    <i class="bi bi-tag me-1"></i>
+                                    Наименование
+                                </label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ form.last_name.value|default_if_none:'' }}" 
+                                       placeholder="Введите наименование" required>
+                                <div class="invalid-feedback">
+                                    Пожалуйста, введите наименование.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="telegram" class="form-label">
+                                <i class="bi bi-telegram me-1"></i>
+                                Telegram
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">@</span>
+                                <input type="text" class="form-control" id="telegram" name="telegram" 
+                                       value="{{ form.telegram.value|default_if_none:'' }}" 
+                                       placeholder="username без @">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">
+                                    <i class="bi bi-telephone me-1"></i>
+                                    Телефон
+                                </label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       value="{{ form.phone.value|default_if_none:'' }}" 
+                                       placeholder="+7 (999) 123-45-67">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">
+                                    <i class="bi bi-flag me-1"></i>
+                                    Статус заказа
+                                </label>
+                                <select class="form-control" id="status" name="status" required>
+                                    <option value="">Выберите статус</option>
+                                    <option value="otrisovka" {% if form.status.value == 'otrisovka' %}selected{% endif %}>
+                                        <i class="bi bi-pencil-square me-1"></i>Отрисовка
+                                    </option>
+                                    <option value="zhdem_material" {% if form.status.value == 'zhdem_material' %}selected{% endif %}>
+                                        <i class="bi bi-clock me-1"></i>Ждем прибытия материала
+                                    </option>
+                                    <option value="priekhal_v_ceh" {% if form.status.value == 'priekhal_v_ceh' %}selected{% endif %}>
+                                        <i class="bi bi-building me-1"></i>Приехал в цех
+                                    </option>
+                                    <option value="na_raspile" {% if form.status.value == 'na_raspile' %}selected{% endif %}>
+                                        <i class="bi bi-scissors me-1"></i>На распиле
+                                    </option>
+                                    <option value="zakaz_gotov" {% if form.status.value == 'zakaz_gotov' %}selected{% endif %}>
+                                        <i class="bi bi-check-circle me-1"></i>Заказ готов
+                                    </option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Пожалуйста, выберите статус заказа.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">
+                                <i class="bi bi-geo-alt me-1"></i>
+                                Адрес
+                            </label>
+                            <input type="text" class="form-control" id="address" name="address" 
+                                   value="{{ form.address.value|default_if_none:'' }}" 
+                                   placeholder="Введите адрес">
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="city" class="form-label">
+                                    <i class="bi bi-building me-1"></i>
+                                    Город
+                                </label>
+                                <input type="text" class="form-control" id="city" name="city" 
+                                       value="{{ form.city.value|default_if_none:'' }}" 
+                                       placeholder="Введите город">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="advance" class="form-label">
+                                    <i class="bi bi-currency-exchange me-1"></i>
+                                    Аванс
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="advance" name="advance" 
+                                           value="{{ form.advance.value|default_if_none:'' }}" 
+                                           placeholder="0.00">
+                                    <span class="input-group-text">₽</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="contract_amount" class="form-label">
+                                    <i class="bi bi-cash-stack me-1"></i>
+                                    Сумма по договору
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="contract_amount" name="contract_amount" 
+                                           value="{{ form.contract_amount.value|default_if_none:'' }}" 
+                                           placeholder="0.00">
+                                    <span class="input-group-text">₽</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_designer" class="form-label">
+                                <i class="bi bi-person-workspace me-1"></i>
+                                Проектировщик
+                            </label>
+                            {{ form.designer }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="file" class="form-label">
+                                <i class="bi bi-paperclip me-1"></i>
+                                Прикрепить файл
+                            </label>
+                            <input type="file" name="file" class="form-control" id="file" 
+                                   accept=".pdf,.doc,.docx,.xlsx,.xls,.csv">
+                            <div class="form-text">
+                                Поддерживаемые форматы: PDF, DOC, DOCX, XLSX, XLS, CSV
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'home' %}" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-arrow-left me-1"></i>
+                                Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Создать запись
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Bootstrap form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %}
