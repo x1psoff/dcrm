@@ -1,0 +1,688 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Выплаты работникам{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width: 1400px;">
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1" style="font-weight: 400; font-size: 1.5rem;">
+                <i class="bi bi-cash-stack me-2"></i>Выплаты работникам
+            </h2>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center" style="min-height: 120px;">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-people text-primary fs-1"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="text-muted mb-1">Работников</h6>
+                        <h4 class="mb-0">{{ workers_count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm border-warning h-100">
+                <div class="card-body d-flex align-items-center" style="min-height: 120px;">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-clock-history text-danger fs-1"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="text-muted mb-1">Активные выплаты</h6>
+                        <h4 class="mb-0">{{ active_payments_count }}</h4>
+                        <small class="text-muted">{{ total_active_payments|floatformat:2 }} ₽</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Активные выплаты -->
+    {% if active_payments %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-normal">
+                <i class="bi bi-clock-history me-2 text-danger"></i>Активные выплаты (не оплачено)
+                <span class="text-muted ms-2">({{ active_orders_count|default:0 }})</span>
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="accordion" id="activeOrdersAccordion">
+                {% for order in active_orders %}
+                <div class="accordion-item border-0 border-bottom active-order-item">
+                    <h2 class="accordion-header" id="activeOrderHeading{{ order.record.id }}">
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#activeOrderCollapse{{ order.record.id }}"
+                                aria-expanded="false"
+                                aria-controls="activeOrderCollapse{{ order.record.id }}">
+                            <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                <div>
+                                    <strong>Заказ #{{ order.record.id }}</strong>
+                                    <span class="text-muted ms-2">
+                                        {{ order.record.first_name }} {{ order.record.last_name }}
+                                    </span>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-semibold text-danger">{{ order.total_amount|floatformat:2 }} ₽</div>
+                                    <small class="text-muted">{{ order.payments|length }} выплат{{ order.payments|length|pluralize:",а,ы" }}</small>
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="activeOrderCollapse{{ order.record.id }}" class="accordion-collapse collapse"
+                         aria-labelledby="activeOrderHeading{{ order.record.id }}"
+                         data-bs-parent="#activeOrdersAccordion">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Роль</th>
+                                            <th>Сумма</th>
+                                            <th>Дата создания</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment_data in order.payments %}
+                                        <tr class="active-payment-row">
+                                            <td><span class="badge bg-info">{{ payment_data.role }}</span></td>
+                                            <td><strong class="text-danger">{{ payment_data.amount|floatformat:2 }} ₽</strong></td>
+                                            <td><small class="text-muted">{{ payment_data.created_at|date:"d.m.Y H:i" }}</small></td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-success" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#paymentModal{{ payment_data.payment.id }}"
+                                                        title="Отметить как оплачено">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </button>
+                                                <a href="{% url 'record_detail' order.record.id %}" class="btn btn-sm btn-outline-primary ms-1" title="Просмотр заказа">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted py-3">Нет выплат</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td class="text-end"><strong>Итого:</strong></td>
+                                            <td><strong class="text-danger">{{ order.total_amount|floatformat:2 }} ₽</strong></td>
+                                            <td colspan="2"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-4 text-center text-muted">Нет активных выплат</div>
+                {% endfor %}
+            </div>
+            <div id="activeOrdersShowMore" class="text-center py-3"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Модальные окна для выплат -->
+    {% for payment_data in active_payments %}
+    <div class="modal fade" id="paymentModal{{ payment_data.payment.id }}" tabindex="-1" aria-labelledby="paymentModalLabel{{ payment_data.payment.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentModalLabel{{ payment_data.payment.id }}">
+                        <i class="bi bi-cash-coin me-2"></i>Оплата выплаты
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3">Информация о выплате</h6>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="text-muted">Работник:</span>
+                                    <strong>{{ payment_data.worker.name }} {{ payment_data.worker.surname }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="text-muted">Роль:</span>
+                                    <span class="badge bg-info">{{ payment_data.role }}</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted fs-5">Сумма выплаты:</span>
+                                    <strong class="text-success fs-4">{{ payment_data.amount|floatformat:2 }} ₽</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <form method="post" action="{% url 'mark_payment_paid' payment_data.payment.id %}" class="d-inline" id="paymentForm{{ payment_data.payment.id }}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success" onclick="return confirmPayment('{{ payment_data.worker.name }} {{ payment_data.worker.surname }}', '{{ payment_data.amount|floatformat:2 }}');">
+                            <i class="bi bi-check-circle me-1"></i>Оплачено
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Выплаты по заказам -->
+    {% if orders_data %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-normal">
+                <i class="bi bi-clipboard-data me-2 text-primary"></i>
+                Выплаты по заказам
+                <span class="text-muted ms-2">({{ orders_count }})</span>
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="accordion" id="ordersAccordion">
+                {% for order in orders_data %}
+                <div class="accordion-item border-0 border-bottom payments-order-item">
+                    <h2 class="accordion-header" id="orderHeading{{ order.record.id }}">
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#orderCollapse{{ order.record.id }}"
+                                aria-expanded="false"
+                                aria-controls="orderCollapse{{ order.record.id }}">
+                            <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                <div>
+                                    <strong>Заказ #{{ order.record.id }}</strong>
+                                    <span class="text-muted ms-2">
+                                        {{ order.record.first_name }} {{ order.record.last_name }}
+                                    </span>
+                                    <span class="badge bg-light text-dark ms-2">
+                                        {{ order.record.get_status_display }}
+                                    </span>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-semibold">{{ order.total_amount|floatformat:2 }} ₽</div>
+                                    <small class="text-muted">
+                                        Не оплачено: {{ order.unpaid_amount|floatformat:2 }} ₽
+                                    </small>
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="orderCollapse{{ order.record.id }}" class="accordion-collapse collapse"
+                         aria-labelledby="orderHeading{{ order.record.id }}"
+                         data-bs-parent="#ordersAccordion">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Работник</th>
+                                            <th>Роль</th>
+                                            <th>Сумма</th>
+                                            <th>Статус</th>
+                                            <th>Дата оплаты</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment in order.payments %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ payment.worker.name }} {{ payment.worker.surname }}</strong>
+                                                {% if payment.worker.profession %}
+                                                    <br><small class="text-muted">{{ payment.worker.profession.name }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td><span class="badge bg-info">{{ payment.role }}</span></td>
+                                            <td><strong class="text-success">{{ payment.amount|floatformat:2 }} ₽</strong></td>
+                                            <td>
+                                                {% if payment.is_paid %}
+                                                    <span class="badge bg-success">
+                                                        <i class="bi bi-check-circle me-1"></i>Оплачено
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="bi bi-clock-history me-1"></i>Не оплачено
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if payment.is_paid and payment.paid_at %}
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-calendar-event me-1"></i>{{ payment.paid_at|date:"d.m.Y" }}<br>
+                                                        <i class="bi bi-clock me-1"></i>{{ payment.paid_at|date:"H:i" }}
+                                                    </small>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if not payment.is_paid %}
+                                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#paymentModal{{ payment.payment.id }}"
+                                                            title="Отметить как оплачено">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </button>
+                                                {% else %}
+                                                    <form method="post" action="{% url 'mark_payment_unpaid' payment.payment.id %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Отметить выплату как неоплаченную?');" title="Отметить как не оплачено">
+                                                            <i class="bi bi-x-circle"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                <a href="{% url 'record_detail' order.record.id %}"
+                                                   class="btn btn-sm btn-outline-primary ms-1" title="Просмотр заказа">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-3">Нет выплат по заказу</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="2" class="text-end"><strong>Итого по заказу:</strong></td>
+                                            <td><strong class="text-success">{{ order.total_amount|floatformat:2 }} ₽</strong></td>
+                                            <td colspan="3" class="text-muted">
+                                                Оплачено: {{ order.paid_amount|floatformat:2 }} ₽ |
+                                                Не оплачено: {{ order.unpaid_amount|floatformat:2 }} ₽
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div id="ordersShowMore" class="text-center py-3"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Список работников -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom">
+            <h6 class="mb-0 fw-normal">Детализация по работникам</h6>
+        </div>
+        <div class="card-body p-0">
+            {% for worker_data in workers_data %}
+            <div class="accordion" id="accordionWorker{{ worker_data.worker.id }}">
+                <div class="accordion-item border-0 border-bottom">
+                    <h2 class="accordion-header" id="heading{{ worker_data.worker.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{{ worker_data.worker.id }}" aria-expanded="false" 
+                                aria-controls="collapse{{ worker_data.worker.id }}">
+                            <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                <div>
+                                    <strong>{{ worker_data.worker.name }} {{ worker_data.worker.surname }}</strong>
+                                    {% if worker_data.worker.profession %}
+                                        <span class="badge bg-secondary ms-2">{{ worker_data.worker.profession.name }}</span>
+                                    {% endif %}
+                                    <span class="text-muted ms-2">
+                                        ({{ worker_data.records_count }} заказ{{ worker_data.records_count|pluralize:",а,ов" }})
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success fs-6">{{ worker_data.total_salary|floatformat:2 }} ₽</span>
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapse{{ worker_data.worker.id }}" class="accordion-collapse collapse" 
+                         aria-labelledby="heading{{ worker_data.worker.id }}" 
+                         data-bs-parent="#accordionWorker{{ worker_data.worker.id }}">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Заказ</th>
+                                            <th>Клиент</th>
+                                            <th>Роль</th>
+                                            <th>Зарплата</th>
+                                            <th style="cursor: pointer;" onclick="togglePaymentSort(this, '{{ worker_data.worker.id }}')" title="Нажмите для сортировки">
+                                                Статус оплаты
+                                                <i class="bi bi-arrow-down ms-1" id="paymentSortIcon{{ worker_data.worker.id }}" title="Неоплаченные сначала"></i>
+                                            </th>
+                                            <th>Дата выплаты</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="workerTableBody{{ worker_data.worker.id }}">
+                                        {% for record_data in worker_data.records %}
+                                        <tr data-is-paid="{{ record_data.is_paid|yesno:'1,0' }}" 
+                                            data-paid-at="{% if record_data.payment.paid_at %}{{ record_data.payment.paid_at|date:'U' }}{% else %}0{% endif %}"
+                                            data-created-at="{{ record_data.created_at|date:'U' }}">
+                                            <td>
+                                                <a href="{% url 'record_detail' record_data.record.id %}" class="text-decoration-none">
+                                                    #{{ record_data.record.id }}
+                                                </a>
+                                            </td>
+                                            <td>{{ record_data.record.first_name }} {{ record_data.record.last_name }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ record_data.role }}</span>
+                                            </td>
+                                            <td>
+                                                <strong class="text-success">{{ record_data.salary|floatformat:2 }} ₽</strong>
+                                            </td>
+                                            <td>
+                                                {% if record_data.is_paid %}
+                                                    <span class="badge bg-success">
+                                                        <i class="bi bi-check-circle me-1"></i>Оплачено
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="bi bi-clock-history me-1"></i>Не оплачено
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if record_data.is_paid and record_data.payment.paid_at %}
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-calendar-event me-1"></i>{{ record_data.payment.paid_at|date:"d.m.Y" }}
+                                                        <br>
+                                                        <i class="bi bi-clock me-1"></i>{{ record_data.payment.paid_at|date:"H:i" }}
+                                                    </small>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if not record_data.is_paid %}
+                                                    <button type="button" class="btn btn-sm btn-outline-success" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#paymentModal{{ record_data.payment.id }}"
+                                                            title="Отметить как оплачено">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </button>
+                                                {% else %}
+                                                    <form method="post" action="{% url 'mark_payment_unpaid' record_data.payment.id %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Отметить выплату как неоплаченную?');" title="Отметить как не оплачено">
+                                                            <i class="bi bi-x-circle"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                <a href="{% url 'record_detail' record_data.record.id %}" 
+                                                   class="btn btn-sm btn-outline-primary ms-1" title="Просмотр">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                Нет записей с зарплатой
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="3" class="text-end"><strong>Итого:</strong></td>
+                                            <td><strong class="text-success">{{ worker_data.total_salary|floatformat:2 }} ₽</strong></td>
+                                            <td colspan="3"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="card-body text-center py-5">
+                <i class="bi bi-inbox text-muted fs-1"></i>
+                <p class="text-muted mt-3">Нет данных о выплатах</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Модальные окна для выплат в детализации работников -->
+    {% for worker_data in workers_data %}
+        {% for record_data in worker_data.records %}
+            {% if not record_data.is_paid %}
+            <div class="modal fade" id="paymentModal{{ record_data.payment.id }}" tabindex="-1" aria-labelledby="paymentModalLabel{{ record_data.payment.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="paymentModalLabel{{ record_data.payment.id }}">
+                                <i class="bi bi-cash-coin me-2"></i>Оплата выплаты
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3">Информация о выплате</h6>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <span class="text-muted">Работник:</span>
+                                            <strong>{{ worker_data.worker.name }} {{ worker_data.worker.surname }}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <span class="text-muted">Роль:</span>
+                                            <span class="badge bg-info">{{ record_data.role }}</span>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-muted fs-5">Сумма выплаты:</span>
+                                            <strong class="text-success fs-4">{{ record_data.salary|floatformat:2 }} ₽</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                            <form method="post" action="{% url 'mark_payment_paid' record_data.payment.id %}" class="d-inline" id="paymentForm{{ record_data.payment.id }}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success" onclick="return confirmPayment('{{ worker_data.worker.name }} {{ worker_data.worker.surname }}', '{{ record_data.salary|floatformat:2 }}');">
+                                    <i class="bi bi-check-circle me-1"></i>Оплачено
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+</div>
+
+<style>
+.accordion-button {
+    background-color: #f8f9fa;
+}
+.accordion-button:not(.collapsed) {
+    background-color: #e9ecef;
+    color: #212529;
+}
+.accordion-item {
+    border: none !important;
+}
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    color: #6c757d;
+}
+.table th[onclick] {
+    user-select: none;
+    transition: background-color 0.2s;
+}
+.table th[onclick]:hover {
+    background-color: #e9ecef;
+}
+.table th[onclick] i {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.table th[onclick]:hover i {
+    opacity: 1;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const BATCH = 10;
+
+    setupShowMore({
+        itemsSelector: '.active-order-item',
+        containerId: 'activeOrdersShowMore',
+        batchSize: BATCH,
+        buttonText: 'Показать еще 10 выплат',
+        collapseText: 'Свернуть до 10',
+    });
+
+    setupShowMore({
+        itemsSelector: '.payments-order-item',
+        containerId: 'ordersShowMore',
+        batchSize: BATCH,
+        buttonText: 'Показать еще 10 заказов',
+        collapseText: 'Свернуть до 10',
+    });
+});
+
+function setupShowMore({ itemsSelector, containerId, batchSize, buttonText, collapseText }) {
+    const items = Array.from(document.querySelectorAll(itemsSelector));
+    if (items.length <= batchSize) return;
+
+    // Скрываем все после batchSize
+    for (let i = batchSize; i < items.length; i++) {
+        items[i].style.display = 'none';
+    }
+
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let shown = batchSize;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-outline-primary';
+    btn.type = 'button';
+
+    function updateText() {
+        if (shown >= items.length) {
+            btn.textContent = collapseText;
+        } else {
+            const remain = items.length - shown;
+            const step = Math.min(batchSize, remain);
+            btn.textContent = `${buttonText} (+${step})`;
+        }
+    }
+
+    btn.addEventListener('click', () => {
+        if (shown >= items.length) {
+            // свернуть
+            for (let i = batchSize; i < items.length; i++) {
+                items[i].style.display = 'none';
+            }
+            shown = batchSize;
+        } else {
+            const next = Math.min(shown + batchSize, items.length);
+            for (let i = shown; i < next; i++) {
+                items[i].style.display = '';
+            }
+            shown = next;
+        }
+        updateText();
+    });
+
+    updateText();
+    container.appendChild(btn);
+}
+
+function confirmPayment(workerName, amount) {
+    return confirm(`Подтвердите оплату выплаты:\n\nРаботник: ${workerName}\nСумма: ${amount} ₽\n\nОтметить выплату как оплаченную?`);
+}
+
+// Сортировка по статусу оплаты
+let paymentSortState = {}; // Храним состояние сортировки для каждого работника
+
+function togglePaymentSort(button, workerId) {
+    const tbody = document.getElementById(`workerTableBody${workerId}`);
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const icon = document.getElementById(`paymentSortIcon${workerId}`);
+    
+    // Получаем текущее состояние сортировки или устанавливаем по умолчанию (неоплаченные сначала)
+    if (!paymentSortState[workerId]) {
+        paymentSortState[workerId] = 'unpaid-first'; // По умолчанию неоплаченные сначала
+        icon.className = 'bi bi-arrow-down ms-1';
+    }
+    
+    // Переключаем состояние сортировки
+    if (paymentSortState[workerId] === 'unpaid-first') {
+        // Сортируем: оплаченные сначала
+        rows.sort((a, b) => {
+            const aPaid = a.getAttribute('data-is-paid') === '1';
+            const bPaid = b.getAttribute('data-is-paid') === '1';
+            
+            if (aPaid !== bPaid) {
+                return aPaid ? -1 : 1; // Оплаченные первыми
+            }
+            
+            // Если статус одинаковый, сортируем по дате оплаты (для оплаченных) или создания
+            if (aPaid) {
+                // Для оплаченных - по дате оплаты (новые оплаты первыми)
+                const aPaidAt = parseInt(a.getAttribute('data-paid-at')) || 0;
+                const bPaidAt = parseInt(b.getAttribute('data-paid-at')) || 0;
+                if (aPaidAt !== bPaidAt) {
+                    return bPaidAt - aPaidAt;
+                }
+            }
+            // По дате создания (новые сначала)
+            const aCreated = parseInt(a.getAttribute('data-created-at')) || 0;
+            const bCreated = parseInt(b.getAttribute('data-created-at')) || 0;
+            return bCreated - aCreated;
+        });
+        paymentSortState[workerId] = 'paid-first';
+        icon.className = 'bi bi-arrow-up ms-1';
+        icon.title = 'Оплаченные сначала';
+    } else {
+        // Сортируем: неоплаченные сначала
+        rows.sort((a, b) => {
+            const aPaid = a.getAttribute('data-is-paid') === '1';
+            const bPaid = b.getAttribute('data-is-paid') === '1';
+            
+            if (aPaid !== bPaid) {
+                return aPaid ? 1 : -1; // Неоплаченные первыми
+            }
+            
+            // Если статус одинаковый, сортируем по дате создания (новые сначала)
+            const aCreated = parseInt(a.getAttribute('data-created-at')) || 0;
+            const bCreated = parseInt(b.getAttribute('data-created-at')) || 0;
+            return bCreated - aCreated;
+        });
+        paymentSortState[workerId] = 'unpaid-first';
+        icon.className = 'bi bi-arrow-down ms-1';
+        icon.title = 'Неоплаченные сначала';
+    }
+    
+    // Переставляем строки в DOM
+    rows.forEach(row => tbody.appendChild(row));
+}
+</script>
+{% endblock %}
+

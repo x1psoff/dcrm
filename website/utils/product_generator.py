@@ -1,5 +1,5 @@
 from itertools import product
-from website.models import Product, Category, Brand
+from website.models import Product, Category
 
 
 def create_product_combinations():
@@ -24,57 +24,51 @@ def create_product_combinations():
 
         if 'петл' in category_name:
             char_dict = characteristics['петл']
-            for brand in Brand.objects.all():
-                for mount_type, resp_type, angle, closing_type in product(
-                        char_dict['mounting_type'],
-                        char_dict['response_type'],
-                        char_dict['hinge_angle'],
-                        char_dict['hinge_closing_type']
-                ):
-                    # Проверяем не существует ли уже
-                    if not Product.objects.filter(
-                            category=category,
-                            brand=brand,
-                            mounting_type=mount_type,
-                            response_type=resp_type,
-                            hinge_angle=angle,
-                            hinge_closing_type=closing_type
-                    ).exists():
-                        product_name = f"{brand.name} {mount_type} {angle}° {resp_type}"
-                        Product.objects.create(
-                            name=product_name,
-                            category=category,
-                            brand=brand,
-                            mounting_type=mount_type,
-                            response_type=resp_type,
-                            hinge_angle=angle,
-                            hinge_closing_type=closing_type,
-                            our_price=0
-                        )
-                        created_count += 1
+            for mount_type, resp_type, angle, closing_type in product(
+                    char_dict['mounting_type'],
+                    char_dict['response_type'],
+                    char_dict['hinge_angle'],
+                    char_dict['hinge_closing_type']
+            ):
+                # Проверяем не существует ли уже
+                if not Product.objects.filter(
+                        category=category,
+                        mounting_type=mount_type,
+                        response_type=resp_type,
+                        hinge_angle=angle,
+                        hinge_closing_type=closing_type
+                ).exists():
+                    product_name = f"{mount_type} {angle}° {resp_type}"
+                    Product.objects.create(
+                        name=product_name,
+                        category=category,
+                        mounting_type=mount_type,
+                        response_type=resp_type,
+                        hinge_angle=angle,
+                        hinge_closing_type=closing_type,
+                        our_price=0
+                    )
+                    created_count += 1
 
         elif 'направля' in category_name:
             char_dict = characteristics['направля']
-            for brand in Brand.objects.all():
-                for mount_type, size in product(
-                        char_dict['mounting_type'],
-                        char_dict['runner_size']
-                ):
-                    if not Product.objects.filter(
-                            category=category,
-                            brand=brand,
-                            mounting_type=mount_type,
-                            runner_size=size
-                    ).exists():
-                        product_name = f"{brand.name} {mount_type} {size}мм"
-                        Product.objects.create(
-                            name=product_name,
-                            category=category,
-                            brand=brand,
-                            mounting_type=mount_type,
-                            runner_size=size,
-                            our_price=0
-                        )
-                        created_count += 1
+            for mount_type, size in product(
+                    char_dict['mounting_type'],
+                    char_dict['runner_size']
+            ):
+                if not Product.objects.filter(
+                        category=category,
+                        mounting_type=mount_type,
+                        runner_size=size
+                ).exists():
+                    product_name = f"{mount_type} {size}мм"
+                    Product.objects.create(
+                        name=product_name,
+                        category=category,
+                        mounting_type=mount_type,
+                        runner_size=size,
+                        our_price=0
+                    )
+                    created_count += 1
 
     return created_count

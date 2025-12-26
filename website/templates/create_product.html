@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% block title %}Создать продукт - Django CRM{% endblock %}
+
+{% block content %}
+<style>
+.product-page {
+  background: #f8f9fa;
+  min-height: 100vh;
+  padding: 2rem 0;
+}
+
+.page-header {
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.product-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  height: 100%;
+}
+
+.product-card .card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+}
+
+.product-card .card-body {
+  padding: 1.5rem;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.characteristic-row {
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+}
+</style>
+
+<div class="product-page">
+  <div class="container-fluid px-3 px-md-4">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h4 class="mb-1">
+            <i class="bi bi-plus-circle me-2"></i>Создать новый продукт
+          </h4>
+          <small class="text-muted">Заполните информацию о продукте</small>
+        </div>
+        <a class="btn btn-outline-secondary" href="{% url 'products_list' %}">
+          <i class="bi bi-arrow-left me-1"></i>Назад
+        </a>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+      <div class="row g-3">
+        <!-- Основная информация -->
+        <div class="col-lg-6">
+          <div class="product-card">
+            <div class="card-header">
+              Основная информация
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label">Название <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="name" required placeholder="Введите название продукта">
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Категория</label>
+                <select class="form-select" name="category" id="categorySelect">
+                  <option value="">---</option>
+                  {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category and selected_category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Наша цена <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" class="form-control" name="our_price" required placeholder="Введите цену">
+              </div>
+              
+              <div class="mb-0">
+                <label class="form-label">Изображение продукта</label>
+                <input type="file" class="form-control" name="image" accept="image/*">
+                <small class="text-muted">Допустимые форматы: JPG, PNG, GIF</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Характеристики -->
+        <div class="col-lg-6">
+          <div class="product-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span>Индивидуальные характеристики</span>
+              <span class="badge bg-secondary">Необязательно</span>
+            </div>
+            <div class="card-body">
+              {% if available_fields or selected_category %}
+                <small class="text-muted d-block mb-3">Добавьте характеристики для продукта</small>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold">Добавить характеристику</span>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="addNewFieldBtn">
+                    <i class="bi bi-plus-circle me-1"></i>Еще одну
+                  </button>
+                </div>
+
+                <div id="newFieldsContainer">
+                  <div class="new-field-row">
+                    <div class="row g-2 align-items-center mb-2">
+                      <div class="col-md-10">
+                        <div class="row g-2">
+                          <div class="col-md-6 select-container">
+                            <select class="form-select field-select" name="new_field[]">
+                              <option value="">Выберите шаблон...</option>
+                              {% for field in available_fields %}
+                                <option value="{{ field.id }}">{{ field.name }}</option>
+                              {% endfor %}
+                              <option value="__new__">➕ Создать новый шаблон...</option>
+                            </select>
+                          </div>
+                          <div class="col-md-6 template-name-container" style="display: none;">
+                            <div class="input-group">
+                              <input type="text" class="form-control new-template-name" name="new_template_name[]" placeholder="Название нового шаблона">
+                              <button type="button" class="btn btn-outline-secondary back-to-select-btn" title="Назад">
+                                <i class="bi bi-arrow-left"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <div class="col-md-6 value-container">
+                            <input type="text" class="form-control" name="new_value[]" placeholder="Значение">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm w-100 remove-field-btn" style="display: none;">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <div class="text-center text-muted py-3">
+                  <p class="mb-0">Выберите категорию для добавления характеристик</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div class="row mt-3">
+        <div class="col-12">
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'products_list' %}" class="btn btn-secondary">
+              <i class="bi bi-x-circle me-1"></i>Отмена
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-circle me-1"></i>Создать продукт
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Перезагрузка страницы при выборе категории
+  const categorySelect = document.getElementById('categorySelect');
+  if (categorySelect) {
+    categorySelect.addEventListener('change', function() {
+      const categoryId = this.value;
+      if (categoryId) {
+        window.location.href = '{% url "create_product" %}?category=' + categoryId;
+      } else {
+        window.location.href = '{% url "create_product" %}';
+      }
+    });
+  }
+
+  // Динамическое добавление полей характеристик
+  const addBtn = document.getElementById('addNewFieldBtn');
+  const container = document.getElementById('newFieldsContainer');
+  
+  if (addBtn && container) {
+    const firstRow = container.querySelector('.new-field-row');
+    
+    function createNewFieldRow() {
+      const newRow = firstRow.cloneNode(true);
+      
+      const select = newRow.querySelector('.field-select');
+      const valueInput = newRow.querySelector('input[name="new_value[]"]');
+      const templateNameInput = newRow.querySelector('.new-template-name');
+      const selectContainer = newRow.querySelector('.select-container');
+      const templateNameContainer = newRow.querySelector('.template-name-container');
+      
+      if (select) select.value = '';
+      if (valueInput) valueInput.value = '';
+      if (templateNameInput) templateNameInput.value = '';
+      
+      if (selectContainer) selectContainer.style.display = 'block';
+      if (templateNameContainer) templateNameContainer.style.display = 'none';
+      
+      const removeBtn = newRow.querySelector('.remove-field-btn');
+      if (removeBtn) removeBtn.style.display = 'block';
+      
+      return newRow;
+    }
+    
+    addBtn.addEventListener('click', function() {
+      const newRow = createNewFieldRow();
+      container.appendChild(newRow);
+      updateRemoveButtons();
+    });
+    
+    container.addEventListener('click', function(e) {
+      if (e.target.closest('.remove-field-btn')) {
+        const row = e.target.closest('.new-field-row');
+        row.remove();
+        updateRemoveButtons();
+      }
+      
+      if (e.target.closest('.back-to-select-btn')) {
+        const row = e.target.closest('.new-field-row');
+        const selectContainer = row.querySelector('.select-container');
+        const templateNameContainer = row.querySelector('.template-name-container');
+        const select = row.querySelector('.field-select');
+        const templateNameInput = row.querySelector('.new-template-name');
+        
+        select.value = '';
+        templateNameInput.value = '';
+        selectContainer.style.display = 'block';
+        templateNameContainer.style.display = 'none';
+      }
+    });
+    
+    container.addEventListener('change', function(e) {
+      if (e.target.classList.contains('field-select')) {
+        const row = e.target.closest('.new-field-row');
+        const selectContainer = row.querySelector('.select-container');
+        const templateNameContainer = row.querySelector('.template-name-container');
+        const templateNameInput = row.querySelector('.new-template-name');
+        
+        if (e.target.value === '__new__') {
+          selectContainer.style.display = 'none';
+          templateNameContainer.style.display = 'block';
+          templateNameInput.focus();
+        } else {
+          selectContainer.style.display = 'block';
+          templateNameContainer.style.display = 'none';
+          templateNameInput.value = '';
+        }
+      }
+    });
+    
+    function updateRemoveButtons() {
+      const rows = container.querySelectorAll('.new-field-row');
+      rows.forEach((row, index) => {
+        const removeBtn = row.querySelector('.remove-field-btn');
+        if (rows.length > 1) {
+          removeBtn.style.display = 'block';
+        } else {
+          removeBtn.style.display = 'none';
+        }
+      });
+    }
+    
+    updateRemoveButtons();
+  }
+});
+</script>
+{% endblock %}

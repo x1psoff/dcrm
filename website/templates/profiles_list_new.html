@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block title %}Управление профилями - Домашний очаг{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <!-- Заголовок и статистика -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="mb-3">
+        <i class="bi bi-people-fill me-2"></i>
+        Управление профилями
+      </h1>
+      
+      <!-- Статистика -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-primary">
+            <div class="card-body py-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <i class="bi bi-people fs-2 text-primary"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h4 class="mb-0">{{ stats.total }}</h4>
+                  <small class="text-muted">Всего пользователей</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-info">
+            <div class="card-body py-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <i class="bi bi-briefcase fs-2 text-info"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h4 class="mb-0">{{ stats.workers }}</h4>
+                  <small class="text-muted">Работников</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-success">
+            <div class="card-body py-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <i class="bi bi-cart fs-2 text-success"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h4 class="mb-0">{{ stats.customers }}</h4>
+                  <small class="text-muted">Заказчиков</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-warning">
+            <div class="card-body py-3">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <i class="bi bi-shield-check fs-2 text-warning"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <h4 class="mb-0">{{ stats.admins }}</h4>
+                  <small class="text-muted">Администраторов</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Фильтры и поиск -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">
+            <i class="bi bi-search me-1"></i>
+            Поиск
+          </label>
+          <input 
+            type="text" 
+            name="search" 
+            class="form-control" 
+            placeholder="Имя, фамилия, username..."
+            value="{{ search_query }}"
+          >
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">
+            <i class="bi bi-filter me-1"></i>
+            Фильтр по типу
+          </label>
+          <select name="type" class="form-select" onchange="this.form.submit()">
+            <option value="all" {% if current_filter == 'all' %}selected{% endif %}>Все пользователи</option>
+            <option value="workers" {% if current_filter == 'workers' %}selected{% endif %}>👷 Только работники</option>
+            <option value="customers" {% if current_filter == 'customers' %}selected{% endif %}>🛒 Только заказчики</option>
+            <option value="admins" {% if current_filter == 'admins' %}selected{% endif %}>👨‍💼 Только администраторы</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i>
+            Найти
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Таблица профилей -->
+  <div class="card">
+    <div class="card-body p-0">
+      {% if messages %}
+        <div class="p-3">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'success' }} alert-dismissible fade show mb-2">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if profiles %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th style="width: 25%;">
+                  <i class="bi bi-person me-1"></i>
+                  Пользователь
+                </th>
+                <th style="width: 15%;">
+                  <i class="bi bi-shield me-1"></i>
+                  Тип
+                </th>
+                <th style="width: 15%;">
+                  <i class="bi bi-telegram me-1"></i>
+                  Telegram
+                </th>
+                <th style="width: 10%;">
+                  <i class="bi bi-eye me-1"></i>
+                  Действия
+                </th>
+                <th style="width: 35%;">
+                  <i class="bi bi-link-45deg me-1"></i>
+                  Назначение работника
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for profile in profiles %}
+                <tr>
+                  <!-- Пользователь -->
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-circle bg-{{ profile.user.is_staff|yesno:'warning,primary' }} text-white me-2">
+                        {{ profile.user.username|first|upper }}
+                      </div>
+                      <div>
+                        <strong>{{ profile.user.username }}</strong>
+                        {% if profile.user.first_name or profile.user.last_name %}
+                          <br><small class="text-muted">{{ profile.user.first_name }} {{ profile.user.last_name }}</small>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                  
+                  <!-- Тип -->
+                  <td>
+                    <span class="badge bg-{{ profile.user.is_superuser|yesno:'danger,info' }}{% if profile.user.is_staff %} bg-warning text-dark{% elif profile.designer %} bg-info{% else %} bg-secondary{% endif %}">
+                      {{ profile.user_type_display }}
+                    </span>
+                    {% if profile.designer %}
+                      <br><small class="badge bg-light text-dark mt-1">{{ profile.designer.profession.name }}</small>
+                    {% endif %}
+                  </td>
+                  
+                  <!-- Telegram -->
+                  <td>
+                    {% if profile.telegram_verified %}
+                      <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Подтвержден
+                      </span>
+                      <br><small class="text-muted">ID: {{ profile.telegram_id|truncatechars:15 }}</small>
+                    {% else %}
+                      <span class="badge bg-secondary">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Не подтвержден
+                      </span>
+                    {% endif %}
+                  </td>
+                  
+                  <!-- Действия -->
+                  <td>
+                    {% if profile.is_customer or not profile.designer %}
+                      <a href="{% url 'customer_detail' profile.user.id %}" 
+                         class="btn btn-sm btn-info w-100" 
+                         title="Посмотреть заказы">
+                        <i class="bi bi-cart-check me-1"></i>
+                        Заказы
+                      </a>
+                    {% else %}
+                      <span class="text-muted small">-</span>
+                    {% endif %}
+                  </td>
+                  
+                  <!-- Назначение -->
+                  <td>
+                    <form method="post" class="row g-2">
+                      {% csrf_token %}
+                      <input type="hidden" name="profile_id" value="{{ profile.id }}">
+                      <div class="col-9">
+                        <select class="form-select form-select-sm" name="designer_id">
+                          <option value="">-- Не назначен --</option>
+                          {% for designer in designers %}
+                            <option value="{{ designer.id }}" 
+                                    {% if profile.designer and profile.designer.id == designer.id %}selected{% endif %}>
+                              {{ designer.name }} {{ designer.surname }} - {{ designer.profession.name }}
+                              {% if designer.method %} ({{ designer.method.name }}){% endif %}
+                            </option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="col-3">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                          <i class="bi bi-check2"></i> Сохранить
+                        </button>
+                      </div>
+                    </form>
+                    {% if profile.designer %}
+                      <small class="text-success mt-1 d-block">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Привязан: {{ profile.designer.name }} {{ profile.designer.surname }}
+                      </small>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+          <h5 class="text-muted mt-3">Пользователи не найдены</h5>
+          {% if search_query %}
+            <p class="text-muted">Попробуйте изменить поисковый запрос</p>
+            <a href="{% url 'profiles_list' %}" class="btn btn-primary">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>
+              Сбросить фильтры
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .avatar-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+  
+  .table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    background-color: #f8f9fa !important;
+  }
+  
+  .card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+  }
+  
+  .table > :not(caption) > * > * {
+    padding: 0.75rem;
+  }
+  
+  .badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+</style>
+{% endblock %}
+

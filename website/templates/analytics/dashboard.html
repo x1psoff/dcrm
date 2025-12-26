@@ -2,69 +2,569 @@
 {% block title %}Аналитика - Django CRM{% endblock %}
 
 {% block extra_css %}
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+    /* Общие стили */
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+    
     .analytics-card {
-        background: white;
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-md);
-        padding: var(--spacing-lg);
-        margin-bottom: var(--spacing-lg);
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 8px rgba(0, 0, 0, 0.06);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        animation: fadeInUp 0.7s ease-out;
     }
     
     .chart-container {
         position: relative;
-        height: 400px;
-        margin: var(--spacing-md) 0;
+        height: 600px;
+        margin: 1.5rem 0;
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 249, 250, 0.6) 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
     .stat-card {
-        background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        border-radius: var(--radius-lg);
-        padding: var(--spacing-lg);
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
         text-align: center;
-        margin-bottom: var(--spacing-md);
+        margin-bottom: 1.5rem;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        border: none;
+        animation: fadeInUp 0.6s ease-out;
+        opacity: 0;
+        animation-fill-mode: forwards;
+    }
+    
+    .stat-card.animate-delay-1 {
+        animation-delay: 0.1s;
+    }
+    
+    .stat-card.animate-delay-2 {
+        animation-delay: 0.2s;
+    }
+    
+    .stat-card.animate-delay-3 {
+        animation-delay: 0.3s;
+    }
+    
+    .stat-card.animate-delay-4 {
+        animation-delay: 0.4s;
+    }
+    
+    .stat-card.stat-card-2 {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        box-shadow: 0 8px 20px rgba(245, 87, 108, 0.3);
+    }
+    
+    .stat-card.stat-card-3 {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        box-shadow: 0 8px 20px rgba(79, 172, 254, 0.3);
+    }
+    
+    .stat-card.stat-card-4 {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        box-shadow: 0 8px 20px rgba(67, 233, 123, 0.3);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
     }
     
     .stat-card h3 {
-        font-size: var(--text-2xl);
-        font-weight: 700;
-        margin-bottom: var(--spacing-sm);
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        letter-spacing: -0.5px;
     }
     
     .stat-card p {
-        font-size: var(--text-sm);
-        opacity: 0.9;
+        font-size: 0.95rem;
+        opacity: 0.95;
         margin: 0;
+        position: relative;
+        z-index: 1;
+        font-weight: 500;
+        letter-spacing: 0.3px;
     }
     
-    .analytics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--spacing-lg);
+    .stat-card i {
+        font-size: 1.5rem;
+        margin-right: 0.5rem;
+        opacity: 0.9;
     }
     
     .analytics-header {
-        background: linear-gradient(135deg, var(--gray-800), var(--gray-900));
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
         color: white;
-        padding: var(--spacing-xl);
-        border-radius: var(--radius-lg);
-        margin-bottom: var(--spacing-xl);
+        padding: 3rem 2rem;
+        border-radius: 20px;
+        margin-bottom: 2.5rem;
         text-align: center;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInDown 0.6s ease-out;
+    }
+    
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
     .analytics-header h1 {
         margin: 0;
-        font-size: var(--text-4xl);
-        font-weight: 700;
+        font-size: 3rem;
+        font-weight: 800;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        letter-spacing: -1px;
     }
     
     .analytics-header p {
-        margin: var(--spacing-sm) 0 0 0;
-        opacity: 0.8;
-        font-size: var(--text-lg);
+        margin: 1rem 0 0 0;
+        opacity: 0.95;
+        font-size: 1.2rem;
+        font-weight: 300;
+        letter-spacing: 0.5px;
+    }
+    
+    .analytics-header i {
+        font-size: 2.5rem;
+        margin-right: 1rem;
+        opacity: 0.9;
+        filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.2));
+    }
+    
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .chart-header-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+    }
+    
+    .chart-header h4 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2d3748;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .chart-header h4 i {
+        color: #667eea;
+        font-size: 1.75rem;
+    }
+    
+    .year-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .year-selector label {
+        margin: 0;
+        font-weight: 600;
+        color: #4a5568;
+        font-size: 0.9rem;
+    }
+    
+    .year-selector select {
+        padding: 0.5rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: #2d3748;
+    }
+    
+    .year-selector select:hover {
+        border-color: #667eea;
+    }
+    
+    .year-selector select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .chart-header-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .settings-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        font-size: 1rem;
+        color: white;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .settings-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .settings-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .settings-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .settings-btn:active {
+        transform: translateY(0);
+    }
+    
+    .settings-btn i {
+        position: relative;
+        z-index: 1;
+        animation: none;
+        transition: transform 0.3s;
+    }
+    
+    .settings-btn:hover i {
+        transform: rotate(90deg);
+    }
+    
+    .settings-btn span {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .settings-btn.rotating i {
+        animation: rotateGear 1s linear infinite;
+    }
+    
+    @keyframes rotateGear {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .settings-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .settings-modal-content {
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+        margin: 5% auto;
+        padding: 2.5rem;
+        border-radius: 24px;
+        width: 90%;
+        max-width: 550px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.5);
+        animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .settings-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .settings-modal-header h3 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #2d3748;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .settings-modal-header h3::before {
+        content: '⚙️';
+        font-size: 1.5rem;
+    }
+    
+    .close-btn {
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #64748b;
+        padding: 0;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        transition: all 0.2s;
+    }
+    
+    .close-btn:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        transform: rotate(90deg);
+    }
+    
+    .settings-form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .settings-form-group label {
+        display: block;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.95rem;
+        letter-spacing: 0.3px;
+    }
+    
+    .settings-form-group select {
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 1rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        padding-right: 2.5rem;
+    }
+    
+    .settings-form-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    .settings-form-group select:hover {
+        border-color: #9ca3af;
+    }
+    
+    .settings-form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 2px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-primary:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+    
+    .btn-primary span {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: 2px solid #e5e7eb;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .btn-secondary:hover {
+        background: #e5e7eb;
+        border-color: #d1d5db;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .analytics-header h1 {
+            font-size: 2rem;
+        }
+        
+        .analytics-header p {
+            font-size: 1rem;
+        }
+        
+        .stat-card h3 {
+            font-size: 2rem;
+        }
+        
+        .chart-container {
+            height: 400px;
+        }
+        
+        .settings-modal-content {
+            padding: 1.5rem;
+            margin: 10% auto;
+        }
+        
+        .chart-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .chart-header-left {
+            width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .chart-header-right {
+            width: 100%;
+            justify-content: flex-end;
+        }
+        
+        .year-selector {
+            width: 100%;
+        }
+        
+        .year-selector select {
+            flex: 1;
+            min-width: 120px;
+        }
     }
 </style>
 {% endblock %}
@@ -83,311 +583,615 @@
     <!-- Общая статистика -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="stat-card">
+            <div class="stat-card animate-delay-1">
                 <h3>{{ total_orders }}</h3>
                 <p>
-                    <i class="bi bi-list-ul me-1"></i>
+                    <i class="bi bi-list-ul"></i>
                     Всего заказов
                 </p>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, var(--success-color), #047857);">
-                <h3>{{ total_contract_amount|floatformat:0 }} ₽</h3>
+            <div class="stat-card stat-card-2 animate-delay-2">
+                <h3>{{ total_margin|floatformat:0 }} ₽</h3>
                 <p>
-                    <i class="bi bi-cash-stack me-1"></i>
-                    Общая сумма договоров
+                    <i class="bi bi-cash-stack"></i>
+                    Общая моржа
                 </p>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, var(--warning-color), #b45309);">
-                <h3>{{ total_components_cost|floatformat:0 }} ₽</h3>
+            <div class="stat-card stat-card-3 animate-delay-3">
+                <h3>{{ yura_margin|floatformat:0 }} ₽</h3>
                 <p>
-                    <i class="bi bi-boxes me-1"></i>
-                    Стоимость комплектующих
+                    <i class="bi bi-person"></i>
+                    Моржа Юры
                 </p>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, var(--info-color), #0e7490);">
-                <h3>{{ avg_margin|floatformat:0 }} ₽</h3>
+            <div class="stat-card stat-card-4 animate-delay-4">
+                <h3>{{ oleg_margin|floatformat:0 }} ₽</h3>
                 <p>
-                    <i class="bi bi-graph-up me-1"></i>
-                    Средняя моржа
+                    <i class="bi bi-person"></i>
+                    Моржа Олега
                 </p>
             </div>
         </div>
     </div>
 
-    <!-- Диаграммы -->
-    <div class="analytics-grid">
-        <!-- Моржа по месяцам -->
-        <div class="analytics-card">
-            <h4>
-                <i class="bi bi-calendar-month me-2"></i>
-                Моржа по месяцам {{ current_year }}
-            </h4>
-            <div class="chart-container">
-                <canvas id="marginChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Распределение моржи -->
-        <div class="analytics-card">
-            <h4>
-                <i class="bi bi-pie-chart me-2"></i>
-                Распределение моржи
-            </h4>
-            <div class="chart-container">
-                <canvas id="marginDistributionChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Статусы заказов -->
-        <div class="analytics-card">
-            <h4>
-                <i class="bi bi-bar-chart me-2"></i>
-                Статусы заказов
-            </h4>
-            <div class="chart-container">
-                <canvas id="statusChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Проектировщики -->
-        <div class="analytics-card">
-            <h4>
-                <i class="bi bi-people me-2"></i>
-                Топ проектировщиков
-            </h4>
-            <div class="chart-container">
-                <canvas id="designerChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Заказы по дням недели -->
-        <div class="analytics-card">
-            <h4>
-                <i class="bi bi-calendar-week me-2"></i>
-                Заказы по дням недели
-            </h4>
-            <div class="chart-container">
-                <canvas id="weekdayChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Детальная статистика -->
-        <div class="analytics-card">
-            <h4>
-                <i class="bi bi-list-check me-2"></i>
-                Детальная статистика
-            </h4>
-            <div class="row">
-                <div class="col-12">
-                    <table class="table table-sm">
-                        <tbody>
-                            <tr>
-                                <td><strong>Общие расходы:</strong></td>
-                                <td class="text-end">{{ total_expenses|floatformat:2 }} ₽</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Моржа Юра:</strong></td>
-                                <td class="text-end">{{ margin_distribution.0.value|floatformat:2 }} ₽</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Моржа Олег:</strong></td>
-                                <td class="text-end">{{ margin_distribution.1.value|floatformat:2 }} ₽</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Общая моржа:</strong></td>
-                                <td class="text-end">{{ margin_distribution.0.value|add:margin_distribution.1.value|floatformat:2 }} ₽</td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <!-- Главная диаграмма -->
+    <div class="analytics-card">
+        <div class="chart-header">
+            <div class="chart-header-left">
+                <h4 id="chartTitle">
+                    <i class="bi bi-calendar-month me-2"></i>
+                    Моржа по месяцам {{ current_year }}{% if selected_month %} - {% if selected_month == 1 %}Январь{% elif selected_month == 2 %}Февраль{% elif selected_month == 3 %}Март{% elif selected_month == 4 %}Апрель{% elif selected_month == 5 %}Май{% elif selected_month == 6 %}Июнь{% elif selected_month == 7 %}Июль{% elif selected_month == 8 %}Август{% elif selected_month == 9 %}Сентябрь{% elif selected_month == 10 %}Октябрь{% elif selected_month == 11 %}Ноябрь{% elif selected_month == 12 %}Декабрь{% endif %}{% endif %}
+                </h4>
+                <div class="year-selector">
+                    <label for="yearSelect">Год:</label>
+                    <select id="yearSelect" onchange="changeYear(this.value)">
+                        {% for year in available_years %}
+                            <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="year-selector">
+                    <label for="monthSelect">Месяц:</label>
+                    <select id="monthSelect" onchange="changeMonth(this.value)">
+                        <option value="">Все месяцы</option>
+                        {% for month_num in available_months %}
+                            <option value="{{ month_num }}" {% if month_num == selected_month %}selected{% endif %}>
+                                {% if month_num == 1 %}Январь
+                                {% elif month_num == 2 %}Февраль
+                                {% elif month_num == 3 %}Март
+                                {% elif month_num == 4 %}Апрель
+                                {% elif month_num == 5 %}Май
+                                {% elif month_num == 6 %}Июнь
+                                {% elif month_num == 7 %}Июль
+                                {% elif month_num == 8 %}Август
+                                {% elif month_num == 9 %}Сентябрь
+                                {% elif month_num == 10 %}Октябрь
+                                {% elif month_num == 11 %}Ноябрь
+                                {% elif month_num == 12 %}Декабрь
+                                {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
+            <div class="chart-header-right">
+                <button class="settings-btn" id="settingsBtn" onclick="openSettings()">
+                    <i class="bi bi-gear"></i>
+                    <span>Настройки</span>
+                </button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="settings-modal">
+        <div class="settings-modal-content">
+            <div class="settings-modal-header">
+                <h3>Настройки диаграммы</h3>
+                <button class="close-btn" onclick="closeSettings()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <form id="settingsForm">
+                <div class="settings-form-group">
+                    <label for="metricSelect">Показатель:</label>
+                    <select id="metricSelect" name="metric">
+                        <option value="margin_by_month">Моржа по месяцам</option>
+                        <option value="margin_distribution">Распределение моржи</option>
+                        <option value="status_stats">Статусы заказов</option>
+                        <option value="designer_stats">Топ проектировщиков</option>
+                        <option value="weekday_stats">Заказы по дням недели</option>
+                    </select>
+                </div>
+                <div class="settings-form-group">
+                    <label for="chartTypeSelect">Тип диаграммы:</label>
+                    <select id="chartTypeSelect" name="chartType">
+                        <option value="line">Линейная</option>
+                        <option value="bar">Столбчатая (вертикальная)</option>
+                        <option value="bar_horizontal">Столбчатая (горизонтальная)</option>
+                        <option value="pie">Круговая</option>
+                        <option value="doughnut">Кольцевая</option>
+                        <option value="radar">Радарная</option>
+                    </select>
+                </div>
+                <div class="settings-form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeSettings()">Отмена</button>
+                    <button type="submit" class="btn-primary"><span>Применить</span></button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// Функция для безопасного парсинга JSON
+function safeParseJSON(jsonString, defaultValue) {
+    try {
+        if (!jsonString || jsonString.trim() === '') {
+            return defaultValue || [];
+        }
+        return JSON.parse(jsonString);
+    } catch (e) {
+        console.error('Ошибка парсинга JSON:', e);
+        console.error('Строка JSON:', jsonString.substring(0, 100) + '...');
+        return defaultValue || [];
+    }
+}
+
+// Текущий выбранный год
+const currentYear = {{ current_year }};
+
 // Данные для диаграмм
-const marginData = {{ margin_by_month|safe }};
-const marginDistributionData = {{ margin_distribution|safe }};
-const statusData = {{ status_stats|safe }};
-const designerData = {{ designer_stats|safe }};
-const weekdayData = {{ weekday_stats|safe }};
+const chartData = {
+    margin_by_month: {
+        data: safeParseJSON('{{ margin_by_month|escapejs }}', []),
+        title: 'Моржа по месяцам',
+        icon: 'bi-calendar-month',
+        labels: (data) => data.map(item => item.month),
+        values: (data) => data.map(item => item.margin),
+        defaultType: 'line',
+        colors: ['#2563eb'],
+        formatValue: (value) => value.toLocaleString() + ' ₽'
+    },
+    margin_distribution: {
+        data: safeParseJSON('{{ margin_distribution|escapejs }}', []),
+        title: 'Распределение моржи',
+        icon: 'bi-pie-chart',
+        labels: (data) => data.map(item => item.name),
+        values: (data) => data.map(item => item.value),
+        defaultType: 'doughnut',
+        colors: ['#2563eb', '#059669'],
+        formatValue: (value) => value.toLocaleString() + ' ₽'
+    },
+    status_stats: {
+        data: safeParseJSON('{{ status_stats|escapejs }}', []),
+        title: 'Статусы заказов',
+        icon: 'bi-bar-chart',
+        labels: (data) => data.map(item => item.name),
+        values: (data) => data.map(item => item.count),
+        defaultType: 'bar',
+        colors: ['#3b82f6', '#f59e0b', '#8b5cf6', '#6b7280', '#10b981'],
+        formatValue: (value) => value
+    },
+    designer_stats: {
+        data: safeParseJSON('{{ designer_stats|escapejs }}', []),
+        title: 'Топ проектировщиков',
+        icon: 'bi-people',
+        labels: (data) => data.map(item => item.name),
+        values: (data) => data.map(item => item.count),
+        defaultType: 'bar_horizontal',
+        colors: ['#8b5cf6'],
+        formatValue: (value) => value
+    },
+    weekday_stats: {
+        data: safeParseJSON('{{ weekday_stats|escapejs }}', []),
+        title: 'Заказы по дням недели',
+        icon: 'bi-calendar-week',
+        labels: (data) => data.map(item => item.day),
+        values: (data) => data.map(item => item.count),
+        defaultType: 'radar',
+        colors: ['#f59e0b'],
+        formatValue: (value) => value
+    }
+};
+
+// Текущие настройки
+let currentMetric = 'margin_by_month';
+let currentChartType = 'line';
+let mainChart = null;
 
 // Настройки Chart.js
-Chart.defaults.font.family = 'Inter, sans-serif';
-Chart.defaults.color = '#64748b';
+function configureChartDefaults() {
+    if (typeof Chart === 'undefined') return;
+    
+    Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    Chart.defaults.color = '#4a5568';
+    Chart.defaults.font.size = 13;
+    Chart.defaults.font.weight = '500';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    Chart.defaults.plugins.tooltip.padding = 12;
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    if (Chart.defaults.plugins.tooltip.titleFont) {
+        Chart.defaults.plugins.tooltip.titleFont.weight = '600';
+    }
+    if (Chart.defaults.plugins.tooltip.bodyFont) {
+        Chart.defaults.plugins.tooltip.bodyFont.weight = '500';
+    }
+    if (Chart.defaults.plugins.legend.labels) {
+        Chart.defaults.plugins.legend.labels.padding = 15;
+        if (Chart.defaults.plugins.legend.labels.font) {
+            Chart.defaults.plugins.legend.labels.font.size = 13;
+            Chart.defaults.plugins.legend.labels.font.weight = '500';
+        }
+    }
+    Chart.defaults.elements.bar.borderRadius = 8;
+    Chart.defaults.elements.line.tension = 0.4;
+    Chart.defaults.elements.line.borderWidth = 3;
+    Chart.defaults.elements.point.radius = 4;
+    Chart.defaults.elements.point.hoverRadius = 6;
+}
 
-// Моржа по месяцам
-const marginCtx = document.getElementById('marginChart').getContext('2d');
-new Chart(marginCtx, {
-    type: 'line',
-    data: {
-        labels: marginData.map(item => item.month),
-        datasets: [{
-            label: 'Моржа (₽)',
-            data: marginData.map(item => item.margin),
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
+// Инициализация диаграммы
+function initChart() {
+    // Проверяем, что Chart.js загружен
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js не загружен!');
+        return;
+    }
+    
+    const canvas = document.getElementById('mainChart');
+    if (!canvas) {
+        console.error('Canvas элемент не найден');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        console.error('Не удалось получить контекст canvas');
+        return;
+    }
+    
+    const metricConfig = chartData[currentMetric];
+    if (!metricConfig) {
+        console.error('Конфигурация для метрики не найдена:', currentMetric);
+        return;
+    }
+    
+    const data = metricConfig.data;
+    if (!data || data.length === 0) {
+        console.warn('Нет данных для отображения');
+        return;
+    }
+    
+    const labels = metricConfig.labels(data);
+    const values = metricConfig.values(data);
+    
+    // Уничтожаем предыдущую диаграмму, если она существует
+    if (mainChart) {
+        mainChart.destroy();
+        mainChart = null;
+    }
+    
+    // Определяем тип диаграммы
+    let chartType = currentChartType;
+    const isHorizontalBar = chartType === 'bar_horizontal';
+    if (isHorizontalBar) {
+        chartType = 'bar';
+    }
+    
+    // Подготавливаем данные в зависимости от типа диаграммы
+    let chartConfig = {
+        type: chartType,
+        data: {
+            labels: labels,
+            datasets: []
         },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return value.toLocaleString() + ' ₽';
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: chartType === 'pie' || chartType === 'doughnut',
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (chartType === 'pie' || chartType === 'doughnut') {
+                                const label = context.label || '';
+                                const value = context.parsed || context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${metricConfig.formatValue(value)} (${percentage}%)`;
+                            }
+                            const axis = isHorizontalBar ? 'x' : 'y';
+                            return metricConfig.formatValue(context.parsed[axis] || context.parsed);
+                        }
                     }
                 }
             }
         }
-    }
-});
-
-// Распределение моржи
-const marginDistCtx = document.getElementById('marginDistributionChart').getContext('2d');
-new Chart(marginDistCtx, {
-    type: 'doughnut',
-    data: {
-        labels: marginDistributionData.map(item => item.name),
-        datasets: [{
-            data: marginDistributionData.map(item => item.value),
-            backgroundColor: ['#2563eb', '#059669'],
-            borderWidth: 0
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 20,
-                    usePointStyle: true
-                }
-            }
-        }
-    }
-});
-
-// Статусы заказов
-const statusCtx = document.getElementById('statusChart').getContext('2d');
-new Chart(statusCtx, {
-    type: 'bar',
-    data: {
-        labels: statusData.map(item => item.name),
-        datasets: [{
-            label: 'Количество заказов',
-            data: statusData.map(item => item.count),
-            backgroundColor: [
-                '#3b82f6', '#f59e0b', '#8b5cf6', '#6b7280', '#10b981'
-            ],
-            borderRadius: 8,
-            borderSkipped: false
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
+    };
+    
+    // Настраиваем dataset в зависимости от типа диаграммы
+    if (chartType === 'line') {
+        chartConfig.data.datasets = [{
+            label: metricConfig.title,
+            data: values,
+            borderColor: metricConfig.colors[0],
+            backgroundColor: metricConfig.colors[0] + '20',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+        }];
+        chartConfig.options.scales = {
             y: {
                 beginAtZero: true,
                 ticks: {
-                    stepSize: 1
+                    callback: function(value) {
+                        return metricConfig.formatValue(value);
+                    }
                 }
             }
-        }
-    }
-});
-
-// Проектировщики
-const designerCtx = document.getElementById('designerChart').getContext('2d');
-new Chart(designerCtx, {
-    type: 'horizontalBar',
-    data: {
-        labels: designerData.map(item => item.name),
-        datasets: [{
-            label: 'Количество заказов',
-            data: designerData.map(item => item.count),
-            backgroundColor: '#8b5cf6',
-            borderRadius: 8
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            x: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1
+        };
+    } else if (chartType === 'bar') {
+        const colors = metricConfig.colors.length > 1 ? metricConfig.colors : 
+            Array(labels.length).fill(metricConfig.colors[0]);
+        chartConfig.data.datasets = [{
+            label: metricConfig.title,
+            data: values,
+            backgroundColor: colors,
+            borderRadius: 8,
+            borderSkipped: false
+        }];
+        
+        if (isHorizontalBar) {
+            // Горизонтальная столбчатая диаграмма
+            chartConfig.options.indexAxis = 'y';
+            chartConfig.options.scales = {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return metricConfig.formatValue(value);
+                        }
+                    }
+                },
+                y: {
+                    ticks: {
+                        autoSkip: false
+                    }
                 }
-            }
+            };
+        } else {
+            // Вертикальная столбчатая диаграмма
+            chartConfig.options.scales = {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return metricConfig.formatValue(value);
+                        }
+                    }
+                }
+            };
         }
-    }
-});
-
-// Заказы по дням недели
-const weekdayCtx = document.getElementById('weekdayChart').getContext('2d');
-new Chart(weekdayCtx, {
-    type: 'radar',
-    data: {
-        labels: weekdayData.map(item => item.day),
-        datasets: [{
-            label: 'Количество заказов',
-            data: weekdayData.map(item => item.count),
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    } else if (chartType === 'pie' || chartType === 'doughnut') {
+        chartConfig.data.datasets = [{
+            data: values,
+            backgroundColor: metricConfig.colors.length > 1 ? metricConfig.colors : 
+                ['#2563eb', '#059669', '#f59e0b', '#8b5cf6', '#6b7280', '#10b981', '#ef4444', '#14b8a6'].slice(0, labels.length),
             borderWidth: 2,
-            pointBackgroundColor: '#f59e0b',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
+            borderColor: '#ffffff'
+        }];
+        chartConfig.options.plugins.legend = {
+            position: 'bottom',
+            labels: {
+                padding: 20,
+                usePointStyle: true,
+                font: {
+                    size: 12
+                }
             }
-        },
-        scales: {
+        };
+    } else if (chartType === 'radar') {
+        chartConfig.data.datasets = [{
+            label: metricConfig.title,
+            data: values,
+            borderColor: metricConfig.colors[0],
+            backgroundColor: metricConfig.colors[0] + '30',
+            borderWidth: 2,
+            pointBackgroundColor: metricConfig.colors[0],
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 4
+        }];
+        chartConfig.options.scales = {
             r: {
                 beginAtZero: true,
                 ticks: {
-                    stepSize: 1
+                    stepSize: 1,
+                    callback: function(value) {
+                        return metricConfig.formatValue(value);
+                    }
+                },
+                pointLabels: {
+                    font: {
+                        size: 11
+                    }
                 }
             }
-        }
+        };
     }
-});
+    
+    // Создаем диаграмму
+    try {
+        mainChart = new Chart(ctx, chartConfig);
+        console.log('Диаграмма успешно создана:', currentMetric, currentChartType);
+    } catch (error) {
+        console.error('Ошибка при создании диаграммы:', error);
+        console.error('Конфигурация:', chartConfig);
+    }
+    
+    // Обновляем заголовок
+    updateChartTitle();
+}
+
+// Обновление заголовка диаграммы
+function updateChartTitle() {
+    const metricConfig = chartData[currentMetric];
+    const titleElement = document.getElementById('chartTitle');
+    const yearSelect = document.getElementById('yearSelect');
+    const monthSelect = document.getElementById('monthSelect');
+    const selectedYear = yearSelect ? yearSelect.value : currentYear;
+    const selectedMonth = monthSelect ? monthSelect.value : '';
+    
+    const monthNames = {
+        '1': 'Январь', '2': 'Февраль', '3': 'Март', '4': 'Апрель',
+        '5': 'Май', '6': 'Июнь', '7': 'Июль', '8': 'Август',
+        '9': 'Сентябрь', '10': 'Октябрь', '11': 'Ноябрь', '12': 'Декабрь'
+    };
+    
+    if (titleElement && metricConfig) {
+        let title = metricConfig.title;
+        // Для некоторых показателей добавляем год в заголовок
+        if (currentMetric === 'margin_by_month' || currentMetric === 'status_stats' || 
+            currentMetric === 'designer_stats' || currentMetric === 'weekday_stats') {
+            title += ` ${selectedYear}`;
+            if (selectedMonth && monthNames[selectedMonth]) {
+                title += ` - ${monthNames[selectedMonth]}`;
+            }
+        }
+        titleElement.innerHTML = `<i class="bi ${metricConfig.icon} me-2"></i>${title}`;
+    }
+}
+
+// Открытие модального окна настроек
+function openSettings() {
+    const modal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    
+    if (!modal || !settingsBtn) return;
+    
+    // Устанавливаем текущие значения
+    const metricSelect = document.getElementById('metricSelect');
+    const chartTypeSelect = document.getElementById('chartTypeSelect');
+    if (metricSelect) metricSelect.value = currentMetric;
+    if (chartTypeSelect) chartTypeSelect.value = currentChartType;
+    
+    modal.style.display = 'block';
+    settingsBtn.classList.add('rotating');
+}
+
+// Закрытие модального окна настроек
+function closeSettings() {
+    const modal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (modal) modal.style.display = 'none';
+    if (settingsBtn) settingsBtn.classList.remove('rotating');
+}
+
+// Изменение года
+function changeYear(year) {
+    // Перезагружаем страницу с новым годом
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    // При смене года сбрасываем месяц
+    url.searchParams.delete('month');
+    window.location.href = url.toString();
+}
+
+function changeMonth(month) {
+    // Перезагружаем страницу с новым месяцем
+    const url = new URL(window.location.href);
+    if (month) {
+        url.searchParams.set('month', month);
+    } else {
+        url.searchParams.delete('month');
+    }
+    window.location.href = url.toString();
+}
+
+// Делаем функции доступными глобально для вызова из HTML
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.changeYear = changeYear;
+window.changeMonth = changeMonth;
+
+// Инициализация после загрузки Chart.js
+function initAnalytics() {
+    // Проверяем, что Chart.js загружен
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js не загружен, повторная попытка...');
+        setTimeout(initAnalytics, 100);
+        return;
+    }
+    
+    console.log('Chart.js загружен, инициализация аналитики...');
+    
+    // Настраиваем Chart.js
+    configureChartDefaults();
+    
+    // Устанавливаем начальные значения в форме настроек
+    const metricSelect = document.getElementById('metricSelect');
+    const chartTypeSelect = document.getElementById('chartTypeSelect');
+    
+    if (metricSelect && chartTypeSelect) {
+        metricSelect.value = currentMetric;
+        chartTypeSelect.value = currentChartType;
+        
+        // Обработка изменения показателя
+        metricSelect.addEventListener('change', function() {
+            const metric = this.value;
+            const metricConfig = chartData[metric];
+            if (metricConfig) {
+                if (metricConfig.defaultType === 'bar_horizontal') {
+                    chartTypeSelect.value = 'bar_horizontal';
+                } else {
+                    chartTypeSelect.value = metricConfig.defaultType;
+                }
+            }
+        });
+    }
+    
+    // Обработка формы настроек
+    const settingsForm = document.getElementById('settingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const metricSelect = document.getElementById('metricSelect');
+            const chartTypeSelect = document.getElementById('chartTypeSelect');
+            if (metricSelect) currentMetric = metricSelect.value;
+            if (chartTypeSelect) currentChartType = chartTypeSelect.value;
+            
+            initChart();
+            closeSettings();
+        });
+    }
+    
+    // Закрытие модального окна при клике вне его
+    const existingOnclick = window.onclick;
+    window.onclick = function(event) {
+        if (existingOnclick) existingOnclick(event);
+        const modal = document.getElementById('settingsModal');
+        if (event.target === modal) {
+            closeSettings();
+        }
+    };
+    
+    // Закрытие модального окна по Escape
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeSettings();
+        }
+    });
+    
+    // Инициализируем диаграмму
+    setTimeout(function() {
+        console.log('Запуск инициализации диаграммы...');
+        initChart();
+    }, 200);
+}
+
+// Запускаем инициализацию после загрузки DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAnalytics);
+} else {
+    initAnalytics();
+}
 </script>
 {% endblock %}

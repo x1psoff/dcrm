@@ -8,6 +8,22 @@
         <div class="card-body">
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+                
+                <!-- Заказчик -->
+                <div class="mb-4">
+                    <div class="alert alert-info">
+                        <label for="id_customer" class="form-label fw-bold">
+                            <i class="bi bi-person-check-fill me-2"></i>
+                            Заказчик (необязательно)
+                        </label>
+                        {{ form.customer }}
+                        <small class="d-block mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Выберите пользователя или оставьте пустым
+                        </small>
+                    </div>
+                </div>
+                
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="id_first_name" class="form-label">Индекс</label>
@@ -68,8 +84,67 @@
                     {{ form.contract_amount }}
                 </div>
                 <div class="mb-3">
-                    <label for="id_designer" class="form-label">Проектировщик</label>
+                    <label for="id_designer" class="form-label">
+                        <i class="bi bi-person me-1"></i>
+                        Проектировщик
+                        <span id="designer-method-badge" class="badge bg-info ms-2" style="display: none;"></span>
+                    </label>
                     {{ form.designer }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_designer_worker" class="form-label">
+                        <i class="bi bi-palette me-1"></i>
+                        Дизайнер
+                        <span id="designer-worker-method-badge" class="badge bg-info ms-2" style="display: none;"></span>
+                    </label>
+                    {{ form.designer_worker }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_assembler_worker" class="form-label">
+                        <i class="bi bi-tools me-1"></i>
+                        Сборщик
+                        <span id="assembler-worker-method-badge" class="badge bg-info ms-2" style="display: none;"></span>
+                    </label>
+                    {{ form.assembler_worker }}
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="id_delivery_price" class="form-label">
+                            <i class="bi bi-truck me-1"></i>
+                            Цена доставки
+                        </label>
+                        {{ form.delivery_price }}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_workshop_price" class="form-label">
+                            <i class="bi bi-building me-1"></i>
+                            Цена цеха
+                        </label>
+                        {{ form.workshop_price }}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="id_designer_manual_salary" class="form-label">
+                            <i class="bi bi-rulers me-1"></i>
+                            Погонные метры проектировщика
+                        </label>
+                        {{ form.designer_manual_salary }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_designer_worker_manual_salary" class="form-label">
+                            <i class="bi bi-rulers me-1"></i>
+                            Погонные метры дизайнера
+                        </label>
+                        {{ form.designer_worker_manual_salary }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_assembler_worker_manual_salary" class="form-label">
+                            <i class="bi bi-rulers me-1"></i>
+                            Погонные метры сборщика
+                        </label>
+                        {{ form.assembler_worker_manual_salary }}
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Прикрепить файл:</label>
@@ -96,4 +171,49 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Данные о способах зарплаты для каждого рабочего
+    const workerMethods = {
+        {% for worker in all_workers %}
+            {{ worker.id }}: "{{ worker.method.name|default:'Не указан' }}",
+        {% endfor %}
+    };
+
+    // Функция для обновления бейджа способа зарплаты
+    function updateMethodBadge(selectId, badgeId) {
+        const select = document.getElementById(selectId);
+        const badge = document.getElementById(badgeId);
+        
+        if (select && badge) {
+            const selectedValue = select.value;
+            if (selectedValue && workerMethods[selectedValue]) {
+                badge.textContent = workerMethods[selectedValue];
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    }
+
+    // Обработчики изменения выбора рабочих
+    document.getElementById('id_designer').addEventListener('change', function() {
+        updateMethodBadge('id_designer', 'designer-method-badge');
+    });
+
+    document.getElementById('id_designer_worker').addEventListener('change', function() {
+        updateMethodBadge('id_designer_worker', 'designer-worker-method-badge');
+    });
+
+    document.getElementById('id_assembler_worker').addEventListener('change', function() {
+        updateMethodBadge('id_assembler_worker', 'assembler-worker-method-badge');
+    });
+
+    // Инициализация при загрузке страницы
+    updateMethodBadge('id_designer', 'designer-method-badge');
+    updateMethodBadge('id_designer_worker', 'designer-worker-method-badge');
+    updateMethodBadge('id_assembler_worker', 'assembler-worker-method-badge');
+});
+</script>
 {% endblock %}

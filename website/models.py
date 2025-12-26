@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 
@@ -7,21 +8,10 @@ from django.db import models
 
 class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="Название категории")
-    parent = models.ForeignKey(
-        'self',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='children',
-        verbose_name="Фурнитура"
-    )
 
-    def get_brands(self):
-        return Brand.objects.filter(product__category=self).distinct()
-
-    def get_root_categories(self):
-        """Получить все корневые категории (без родителя)"""
-        return Category.objects.filter(parent__isnull=True)
+    def get_fields(self):
+        """Получить все поля категории"""
+        return self.category_fields.all().order_by('id')
 
     def __str__(self):
         return self.name
@@ -31,8 +21,72 @@ class Category(models.Model):
         verbose_name_plural = "Категории"
 
 
+class CategoryField(models.Model):
+    """Поля для категории - определяют какие характеристики можно задавать для продуктов этой категории"""
+    FIELD_TYPE_CHOICES = [
+        ('text', 'Текст'),
+        ('number', 'Число'),
+        ('select', 'Выбор из списка'),
+    ]
+    
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name='category_fields',
+        verbose_name="Категория"
+    )
+    name = models.CharField(max_length=100, verbose_name="Название поля", help_text="Например: Угол открывания, Тип ответки, Длина")
+    field_key = models.SlugField(
+        max_length=100, 
+        verbose_name="Ключ поля", 
+        help_text="Автоматически генерируется из названия",
+        blank=True
+    )
+    field_type = models.CharField(
+        max_length=20,
+        choices=FIELD_TYPE_CHOICES,
+        default='text',
+        verbose_name="Тип поля",
+        help_text="Текст - для обычных значений, Число - для размеров/количеств, Выбор - для списка вариантов"
+    )
+    required = models.BooleanField(default=False, verbose_name="Обязательное", help_text="Обязательно ли заполнять это поле")
+    
+    def save(self, *args, **kwargs):
+        # Автоматически генерируем field_key из названия, если не указан
+        if not self.field_key:
+            import re
+            key = self.name.lower()
+            # Транслитерация основных русских букв
+            translit_map = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+                'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+                'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+            }
+            for ru, en in translit_map.items():
+                key = key.replace(ru, en)
+            # Убираем спецсимволы, оставляем только буквы, цифры, пробелы и дефисы
+            key = re.sub(r'[^\w\s-]', '', key)
+            # Заменяем пробелы и дефисы на подчеркивания
+            key = re.sub(r'[-\s]+', '_', key)
+            key = key.strip('_')
+            self.field_key = key
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.category.name} - {self.name}"
+    
+    class Meta:
+        verbose_name = "Поле категории"
+        verbose_name_plural = "Поля категорий"
+        unique_together = ['category', 'field_key']
+        ordering = ['id']
+
+
 class CalculationMethod(models.Model):
-    name = models.CharField(max_length=50, verbose_name="Название метода")
+    name = models.CharField(max_length=50, unique=True, verbose_name="Название метода")
 
     def __str__(self):
         return self.name
@@ -42,14 +96,32 @@ class CalculationMethod(models.Model):
         verbose_name_plural = "Способы оплаты раб"
 
 
+class Profession(models.Model):
+    name = models.CharField(max_length=50, unique=True, verbose_name="Название профессии")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Профессия"
+        verbose_name_plural = "Профессии"
+
+
 class Designer(models.Model):
     name = models.CharField(max_length=100, verbose_name="Имя")
     surname = models.CharField(max_length=100, verbose_name="Фамилия")
+    profession = models.ForeignKey(
+        Profession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=False,
+        verbose_name="Профессия"
+    )
     method = models.ForeignKey(
         CalculationMethod,
         on_delete=models.SET_NULL,
         null=True,
-        blank=True,
+        blank=False,
         verbose_name="Метод расчета"
     )
     percentage = models.DecimalField(
@@ -71,94 +143,12 @@ class Designer(models.Model):
         return f"{self.name} {self.surname}"
 
     class Meta:
-        verbose_name = "Проектировщик"
-        verbose_name_plural = "Проектировщики"
+        verbose_name = "Рабочий"
+        verbose_name_plural = "Рабочие"
 
 
-class Plita(models.Model):
-    MATERIAL_CHOICES = [
-        ('ЛДСП', 'ЛДСП'),
-        ('МДФ', 'МДФ'),
-        ('Пленка', 'Пленка'),
-        ('Другой', 'Другой материал'),
-    ]
-
-    name = models.CharField(max_length=100, verbose_name="Название плиты")
-    material = models.CharField(
-        max_length=20,
-        choices=MATERIAL_CHOICES,
-        default='ЛДСП',
-        verbose_name="Материал"
-    )
-    thickness = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        verbose_name="Толщина (мм)",
-        help_text="Толщина в миллиметрах"
-    )
-    color = models.CharField(
-        max_length=50,
-        blank=True,
-        verbose_name="Цвет/Оттенок"
-    )
-    price_per_square_meter = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name="Цена за м²",
-        help_text="Цена за квадратный метр"
-    )
-
-    def __str__(self):
-        return f"{self.name} ({self.material}, {self.thickness}мм)"
-
-    class Meta:
-        verbose_name = "Плита"
-        verbose_name_plural = "Плиты"
-        ordering = ['material', 'thickness', 'name']
-
-class Store(models.Model):
-    name = models.CharField(max_length=100, verbose_name="Название магазина")
-    url_pattern = models.CharField(max_length=200, verbose_name="URL паттерн")
-    price_selector = models.CharField(max_length=200, verbose_name="CSS селектор цены")
-    discount_percent = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0,
-        verbose_name="Скидка магазина (%)",
-        help_text="Процент скидки для этого магазина"
-    )
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = "Магазин"
-        verbose_name_plural = "Магазины"
-
-
-class Brand(models.Model):
-    name = models.CharField(max_length=100, verbose_name="Название бренда")
-    description = models.TextField(blank=True, verbose_name="Описание")
-
-    def get_mounting_types(self):
-        return Product.objects.filter(brand=self).values_list('mounting_type', flat=True).distinct()
-
-    def get_hinge_angles(self):
-        return Product.objects.filter(brand=self).values_list('hinge_angle', flat=True).distinct()
-
-    def get_hinge_closing_types(self):
-        return Product.objects.filter(brand=self).values_list('hinge_closing_type', flat=True).distinct()
-
-    def get_response_types(self):
-        return Product.objects.filter(brand=self).values_list('response_type', flat=True).distinct()
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = "Бренд"
-        verbose_name_plural = "Бренды"
-
+# Модель Plita удалена - плиты больше не используются
+# Модели Brand и Store удалены - бренды и магазины больше не используются
 
 class Product(models.Model):
     name = models.CharField(max_length=200, verbose_name="Название товара")
@@ -171,49 +161,50 @@ class Product(models.Model):
         verbose_name="Категория"
     )
 
+    # Старые поля оставляем для обратной совместимости, но они будут deprecated
     hinge_angle = models.CharField(
         max_length=20,
         blank=True,
         default='',
-        verbose_name="Угол открывания"
+        verbose_name="Угол открывания (устарело)"
     )
 
     hinge_closing_type = models.CharField(
         max_length=20,
         blank=True,
         default='',
-        verbose_name="Тип закрывания"
+        verbose_name="Тип закрывания (устарело)"
     )
 
     runner_size = models.CharField(
         max_length=20,
         blank=True,
         default='',
-        verbose_name="Размер направляющих"
+        verbose_name="Размер направляющих (устарело)"
     )
 
     response_type=models.CharField(
         max_length=20,
         blank=True,
         default='',
-        verbose_name="Тип ответки"
+        verbose_name="Тип ответки (устарело)"
     )
 
-    # Простое текстовое поле для типа
     mounting_type = models.CharField(
         max_length=20,
         blank=True,
         default='',
-        verbose_name="Тип"
+        verbose_name="Тип (устарело)"
     )
 
-    brand = models.ForeignKey(
-        Brand,
-        on_delete=models.SET_NULL,
-        null=True,
+    # Новое поле для хранения динамических характеристик
+    custom_fields = models.JSONField(
+        default=dict,
         blank=True,
-        verbose_name="Бренд"
+        verbose_name="Дополнительные характеристики",
+        help_text="Хранит значения полей, определенных для категории"
     )
+
     our_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -230,18 +221,45 @@ class Product(models.Model):
         verbose_name="URL для парсинга",
         blank=True
     )
-    store = models.ForeignKey(
-        Store,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Магазин"
-    )
     last_parsed = models.DateTimeField(
         null=True,
         blank=True,
         verbose_name="Последний парсинг"
     )
+    image = models.ImageField(
+        upload_to='products/',
+        null=True,
+        blank=True,
+        verbose_name="Изображение продукта"
+    )
+
+    def get_field_value(self, field_key):
+        """Получить значение поля по ключу"""
+        return self.custom_fields.get(field_key, '')
+    
+    def set_field_value(self, field_key, value):
+        """Установить значение поля"""
+        if not self.custom_fields:
+            self.custom_fields = {}
+        self.custom_fields[field_key] = value
+    
+    def get_category_fields(self):
+        """Получить все поля категории с их значениями"""
+        if not self.category:
+            return []
+        
+        fields = self.category.get_fields()
+        result = []
+        for field in fields:
+            result.append({
+                'field': field,
+                'value': self.get_field_value(field.field_key)
+            })
+        return result
+    
+    def get_custom_characteristics(self):
+        """Получить все индивидуальные характеристики продукта"""
+        return self.product_custom_fields.all().order_by('order', 'id')
 
     def __str__(self):
         return self.name
@@ -253,11 +271,54 @@ class Product(models.Model):
 
     @property
     def final_parsed_price(self):
-        """Итоговая цена после применения скидки магазина"""
-        if self.parsed_price and self.store and self.store.discount_percent:
-            discount = self.parsed_price * (self.store.discount_percent / 100)
-            return round(self.parsed_price - discount, 1)
+        """Итоговая цена после парсинга"""
         return round(self.parsed_price, 1) if self.parsed_price else 0
+
+class ProductCustomField(models.Model):
+    """Индивидуальные характеристики для конкретного продукта - выбираются из шаблонов категории"""
+    
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='product_custom_fields',
+        verbose_name="Продукт"
+    )
+    category_field = models.ForeignKey(
+        CategoryField,
+        on_delete=models.CASCADE,
+        related_name='product_custom_fields',
+        verbose_name="Шаблон характеристики",
+        help_text="Выберите шаблон из характеристик категории этого продукта",
+        null=True,
+        blank=True
+    )
+    value = models.CharField(max_length=500, verbose_name="Значение", blank=True)
+    order = models.IntegerField(default=0, verbose_name="Порядок")
+    
+    @property
+    def name(self):
+        """Название из шаблона"""
+        return self.category_field.name if self.category_field else ""
+    
+    @property
+    def field_type(self):
+        """Тип поля из шаблона"""
+        return self.category_field.field_type if self.category_field else 'text'
+    
+    def get_choices_list(self):
+        """Получить список вариантов для выбора из шаблона"""
+        # Варианты выбора больше не поддерживаются в шаблонах
+        return []
+    
+    def __str__(self):
+        return f"{self.product.name} - {self.name}: {self.value}"
+    
+    class Meta:
+        verbose_name = "Индивидуальная характеристика"
+        verbose_name_plural = "Индивидуальные характеристики"
+        ordering = ['order', 'id']
+        unique_together = ['product', 'category_field']
+
 
 class Record(models.Model):
     STATUS_CHOICES = [
@@ -268,7 +329,15 @@ class Record(models.Model):
         ('zakaz_gotov', 'Заказ готов'),
     ]
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    customer = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_records',
+        verbose_name='Заказчик (необязательно)'
+    )
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     telegram = models.CharField(max_length=100, blank=True, default='', verbose_name="Telegram")
@@ -282,7 +351,8 @@ class Record(models.Model):
         max_length=20, 
         choices=STATUS_CHOICES, 
         default='otrisovka',
-        verbose_name="Статус заказа"
+        verbose_name="Статус заказа",
+        db_index=True
     )
     advance = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name="Аванс")
     contract_amount = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, verbose_name="Сумма по договору")
@@ -293,49 +363,70 @@ class Record(models.Model):
         blank=True,
         verbose_name="Проектировщик"
     )
-    # Ручной ввод суммы для метода "погонный метр"
+    # Ручной ввод погонных метров для каждого рабочего
     designer_manual_salary = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         null=True,
         blank=True,
-        verbose_name="Зарплата проектировщика (пог. метр)"
+        verbose_name="Погонные метры проектировщика"
+    )
+    designer_worker_manual_salary = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Погонные метры дизайнера"
+    )
+    assembler_worker_manual_salary = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Погонные метры сборщика"
+    )
+    
+    # Поля для других профессий
+    designer_worker = models.ForeignKey(
+        Designer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='designer_records',
+        verbose_name="Дизайнер",
+        limit_choices_to={'profession__name': 'дизайнер'}
+    )
+    assembler_worker = models.ForeignKey(
+        Designer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assembler_records',
+        verbose_name="Сборщик",
+        limit_choices_to={'profession__name': 'сборщики'}
+    )
+    delivery_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Цена доставки"
+    )
+    workshop_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Цена цеха"
     )
     # Отметки для распределения моржи
     margin_yura = models.BooleanField(default=True, verbose_name="Моржа Юра")
     margin_oleg = models.BooleanField(default=True, verbose_name="Моржа Олег")
 
     products = models.ManyToManyField(Product, related_name='records', blank=True, verbose_name="Комплектующие")
-    plitas = models.ManyToManyField(
-        Plita,
-        through='RecordPlita',
-        related_name='records',
-        blank=True,
-        verbose_name="Используемые плиты"
-    )
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-
-class RecordPlita(models.Model):
-    record = models.ForeignKey(Record, on_delete=models.CASCADE)
-    plita = models.ForeignKey(Plita, on_delete=models.CASCADE)
-    quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=1,
-        verbose_name="Количество (м²)",
-        help_text="Количество в квадратных метрах"
-    )
-    added_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Используемая плита"
-        verbose_name_plural = "Используемые плиты"
-        unique_together = ['record', 'plita']
-
-    def __str__(self):
-        return f"{self.record} - {self.plita} ({self.quantity}м²)"
 
 class RecordProduct(models.Model):
     BUYER_CHOICES = [
@@ -343,8 +434,8 @@ class RecordProduct(models.Model):
         ('Олег', 'Олег'),
     ]
 
-    record = models.ForeignKey(Record, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    record = models.ForeignKey(Record, on_delete=models.CASCADE, db_index=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_index=True)
     quantity = models.IntegerField(default=1, verbose_name="Количество")
     added_at = models.DateTimeField(auto_now_add=True)
     buyer = models.CharField(
@@ -389,7 +480,8 @@ class UnplannedExpense(models.Model):
         Record,
         on_delete=models.CASCADE,
         related_name='unplanned_expenses',
-        verbose_name="Запись"
+        verbose_name="Запись",
+        db_index=True
     )
     item = models.CharField(max_length=200, verbose_name="Предмет расхода")
     price = models.DecimalField(
@@ -401,7 +493,8 @@ class UnplannedExpense(models.Model):
         max_length=50,
         choices=SPENT_BY_CHOICES,
         default='Юра',
-        verbose_name="Кто потратил"
+        verbose_name="Кто потратил",
+        db_index=True
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
@@ -413,3 +506,129 @@ class UnplannedExpense(models.Model):
         verbose_name = "Непланируемый расход"
         verbose_name_plural = "Непланируемые расходы"
         ordering = ['-created_at']
+
+
+class Profile(models.Model):
+    """Профиль пользователя с привязкой к работнику (Designer)"""
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='profile',
+        verbose_name='Пользователь'
+    )
+    designer = models.ForeignKey(
+        Designer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='profiles',
+        verbose_name='Проектировщик/Дизайнер/Сборщик'
+    )
+    telegram_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name='Telegram ID'
+    )
+    telegram_verified = models.BooleanField(
+        default=False,
+        verbose_name='Telegram подтвержден'
+    )
+    verification_code = models.CharField(
+        max_length=6,
+        null=True,
+        blank=True,
+        verbose_name='Код верификации'
+    )
+
+    def __str__(self):
+        return f"Профиль {self.user.username}"
+    
+    @property
+    def is_worker(self):
+        """Проверяет, является ли пользователь работником"""
+        return bool(self.designer)
+    
+    @property
+    def is_customer(self):
+        """Проверяет, является ли пользователь заказчиком"""
+        return not self.is_worker and not self.user.is_staff
+    
+    @property
+    def user_type_display(self):
+        """Возвращает текстовое представление типа пользователя"""
+        if self.user.is_superuser:
+            return "Администратор"
+        elif self.user.is_staff:
+            return "Менеджер"
+        elif self.is_worker:
+            return "Работник"
+        else:
+            return "Заказчик"
+
+    class Meta:
+        verbose_name = "Профиль пользователя"
+        verbose_name_plural = "Профили пользователей"
+
+
+class WorkerPayment(models.Model):
+    """Модель для отслеживания выплат работникам"""
+    ROLE_CHOICES = [
+        ('designer', 'Проектировщик'),
+        ('designer_worker', 'Дизайнер'),
+        ('assembler_worker', 'Сборщик'),
+    ]
+    
+    record = models.ForeignKey(
+        Record,
+        on_delete=models.CASCADE,
+        related_name='worker_payments',
+        verbose_name="Запись"
+    )
+    worker = models.ForeignKey(
+        Designer,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        verbose_name="Работник"
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        verbose_name="Роль"
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Сумма выплаты"
+    )
+    is_paid = models.BooleanField(
+        default=False,
+        verbose_name="Оплачено",
+        db_index=True
+    )
+    paid_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Дата оплаты"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Дата создания"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Дата обновления"
+    )
+    
+    class Meta:
+        verbose_name = "Выплата работнику"
+        verbose_name_plural = "Выплаты работникам"
+        unique_together = ['record', 'worker', 'role']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_paid', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.worker.name} {self.worker.surname} - {self.get_role_display()} - {self.amount} ₽ ({'Оплачено' if self.is_paid else 'Не оплачено'})"

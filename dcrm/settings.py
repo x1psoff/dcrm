@@ -1,9 +1,13 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CSV_FILE_PATH = os.path.join(BASE_DIR, 'data', '1819.csv')
+# External DB path (optional). If not set, use project db.sqlite3
+DB_PATH = os.environ.get('DB_PATH') or os.path.join(BASE_DIR, 'db.sqlite3')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
@@ -60,30 +64,13 @@ WSGI_APPLICATION = 'dcrm.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'elderco',
-        'USER': 'root',
-        'PASSWORD': 'nounposubal1',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': DB_PATH,
     }
 }
-
 # Password validation
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# Валидаторы отключены - принимаются любые пароли
+AUTH_PASSWORD_VALIDATORS = []
 
 # Internationalization
 LANGUAGE_CODE = 'ru'
@@ -93,12 +80,17 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 
 MEDIA_URL = '/media/'  # URL для доступа к файлам
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Локальный путь к файлам
 
+# Telegram Bot Settings
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

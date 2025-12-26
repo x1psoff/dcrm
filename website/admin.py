@@ -6,7 +6,7 @@ from decimal import Decimal
 import requests
 from bs4 import BeautifulSoup
 import re
-from .models import Category, Product, Store, Brand, CalculationMethod, Designer,Plita,RecordPlita
+from .models import Category, CategoryField, Product, ProductCustomField, CalculationMethod, Profession, Designer, Profile, WorkerPayment
 from django.urls import path
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -18,20 +18,111 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+class CategoryFieldInline(admin.TabularInline):
+    model = CategoryField
+    extra = 1
+    fields = ('name', 'field_type', 'required')
+    ordering = ('id',)
+    verbose_name = "Характеристика"
+    verbose_name_plural = "Характеристики категории"
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        
+        # Улучшаем подсказки для полей
+        class CategoryFieldForm(formset.form):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                # Добавляем подсказки
+                if 'name' in self.fields:
+                    self.fields['name'].help_text = 'Например: Угол открывания, Тип ответки, Длина'
+                if 'field_type' in self.fields:
+                    self.fields['field_type'].help_text = 'Текст - для обычных значений, Число - для размеров, Выбор - для списка вариантов'
+        
+        formset.form = CategoryFieldForm
+        
+        # Автоматически генерируем field_key из названия
+        class CategoryFieldFormSet(formset):
+            def save_new(self, form, commit=True):
+                instance = form.save(commit=False)
+                if not instance.field_key:
+                    # Генерируем ключ из названия
+                    import re
+                    key = instance.name.lower()
+                    # Транслитерация
+                    translit_map = {
+                        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+                        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+                        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+                    }
+                    for ru, en in translit_map.items():
+                        key = key.replace(ru, en)
+                    key = re.sub(r'[^\w\s-]', '', key)
+                    key = re.sub(r'[-\s]+', '_', key)
+                    key = key.strip('_')
+                    instance.field_key = key
+                if commit:
+                    instance.save()
+                return instance
+            
+            def save_existing(self, form, instance, commit=True):
+                obj = form.save(commit=False)
+                # Обновляем ключ автоматически
+                import re
+                key = obj.name.lower()
+                translit_map = {
+                    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+                    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                    'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+                    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+                }
+                for ru, en in translit_map.items():
+                    key = key.replace(ru, en)
+                key = re.sub(r'[^\w\s-]', '', key)
+                key = re.sub(r'[-\s]+', '_', key)
+                key = key.strip('_')
+                obj.field_key = key
+                if commit:
+                    obj.save()
+                return obj
+        
+        return CategoryFieldFormSet
+
+
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'parent']
-    list_filter = ['parent']
+    list_display = ['name', 'fields_count']
     search_fields = ['name']
-
-
-class StoreAdmin(admin.ModelAdmin):
-    list_display = ['name', 'url_pattern', 'price_selector', 'discount_percent']
-    search_fields = ['name']
-
-
-class BrandAdmin(admin.ModelAdmin):
-    list_display = ['name']
-    search_fields = ['name']
+    inlines = [CategoryFieldInline]
+    
+    fieldsets = (
+        ('Название категории', {
+            'fields': ('name',),
+        }),
+        ('Шаблоны характеристик', {
+            'fields': (),
+            'description': mark_safe('''
+                <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
+                    <strong>Создайте шаблоны характеристик для этой категории.</strong><br>
+                    Эти шаблоны будут доступны для выбора при добавлении индивидуальных характеристик к элементам этой категории.<br><br>
+                    <strong>Как создать шаблон:</strong><br>
+                    1. Нажмите "Добавить еще одну Характеристика" ниже<br>
+                    2. Укажите название (например: "Угол открывания", "Тип ответки")<br>
+                    3. Выберите тип поля (Текст, Число или Выбор из списка)<br>
+                    4. Сохраните категорию
+                </div>
+            '''),
+        }),
+    )
+    
+    def fields_count(self, obj):
+        count = obj.category_fields.count()
+        if count > 0:
+            return f"{count} шаблонов"
+        return "Нет шаблонов"
+    fields_count.short_description = 'Шаблоны'
 
 
 class CalculationMethodAdmin(admin.ModelAdmin):
@@ -39,125 +130,157 @@ class CalculationMethodAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
 
+class ProfessionAdmin(admin.ModelAdmin):
+    list_display = ['name']
+    search_fields = ['name']
+
+
 class DesignerAdmin(admin.ModelAdmin):
-    list_display = ['name', 'surname', 'method']
-    list_filter = ['method']
+    list_display = ['name', 'surname', 'profession', 'method']
+    list_filter = ['profession', 'method']
     search_fields = ['name', 'surname']
 
 
 class ProductAdminForm(forms.ModelForm):
-    parse_now = forms.BooleanField(
-        required=False,
-        label="Запарсить сейчас"
-    )
-
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = [
+            'name',
+            'category',
+            'our_price',
+            'custom_fields',
+            'mounting_type',
+            'response_type',
+            'hinge_angle',
+            'hinge_closing_type',
+            'runner_size',
+        ]
         widgets = {
             'mounting_type': forms.Select(choices=[]),
             'response_type': forms.Select(choices=[]),
             'hinge_angle': forms.Select(choices=[]),
             'hinge_closing_type': forms.Select(choices=[]),
             'runner_size': forms.Select(choices=[]),
+            'custom_fields': forms.HiddenInput(),  # Скрываем JSONField, будем работать через динамические поля
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Динамические поля категории в админке отключены, чтобы избежать рекурсий и предупреждений.
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+        return instance
+
+
+class ProductCustomFieldInline(admin.TabularInline):
+    model = ProductCustomField
+    extra = 1
+    fields = ('category_field', 'value', 'order')
+    ordering = ('order', 'id')
+    verbose_name = "Индивидуальная характеристика"
+    verbose_name_plural = "Индивидуальные характеристики"
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        
+        class ProductCustomFieldForm(formset.form):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                # Фильтруем шаблоны по категории продукта
+                if obj and obj.category:
+                    if 'category_field' in self.fields:
+                        self.fields['category_field'].queryset = CategoryField.objects.filter(
+                            category=obj.category
+                        )
+                        self.fields['category_field'].help_text = 'Выберите шаблон из характеристик категории'
+                        self.fields['category_field'].required = True
+                else:
+                    if 'category_field' in self.fields:
+                        self.fields['category_field'].queryset = CategoryField.objects.none()
+                        self.fields['category_field'].help_text = 'Сначала выберите категорию для продукта'
+        
+        formset.form = ProductCustomFieldForm
+        return formset
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
-    list_display = ['id', 'name', 'category', 'brand', 'mounting_type', 'response_type', 'hinge_angle',
-                    'hinge_closing_type', 'runner_size', 'our_price',
-                    'parsed_price', 'get_our_price_with_discount', 'last_parsed']
+    list_display = ['id', 'name', 'category', 'our_price', 'last_parsed']
     list_display_links = ['id', 'name']
-    list_filter = ['category', 'brand', 'store', 'mounting_type', 'response_type', 'hinge_angle', 'hinge_closing_type',
-                   'runner_size']
-    search_fields = ['name', 'category__name', 'brand__name', 'id']
-    readonly_fields = ['id', 'last_parsed', 'parsed_price', 'get_price_comparison', 'product_characteristics']
+    list_filter = ['category']
+    search_fields = ['name', 'category__name', 'id']
+    readonly_fields = ['id', 'last_parsed', 'product_characteristics']
+    inlines = [ProductCustomFieldInline]
 
-    fieldsets = (
-        ('Характеристики товара', {
-            'fields': ('product_characteristics',),
-            'classes': ('characteristics-panel',),
-        }),
-        ('Основная информация', {
-            'fields': (
-                'id', 'name', 'category', ('brand', 'store'), 'source_url',
-                'mounting_type', 'response_type', 'hinge_angle', 'hinge_closing_type', 'runner_size'
-            ),
-            'classes': ('wide',),
-        }),
-        ('Цены', {
+    def get_fieldsets(self, request, obj=None):
+        """Полеsets без динамических полей категории"""
+        fieldsets = [
+            ('Характеристики товара', {
+                'fields': ('product_characteristics',),
+                'classes': ('characteristics-panel',),
+            }),
+            ('Основная информация', {
+                'fields': (
+                    'id', 'name', 'category',
+                ),
+                'classes': ('wide',),
+            }),
+        ]
+        fieldsets.append(('Цены', {
             'fields': (
                 'our_price',
-                'get_price_comparison',
-                'parse_now'
             )
-        }),
-    )
+        }))
+        
+        return fieldsets
 
     def product_characteristics(self, obj):
-        """Отображение характеристик товара в зависимости от категории"""
+        """Отображение характеристик товара из полей категории и индивидуальных"""
         if not obj.id:
             return "Сохраните товар, чтобы увидеть характеристики"
 
-        if not obj.category:
-            return "Выберите категорию товара"
-
-        category_name = obj.category.name.lower()
-
-        # Для петель
-        if 'петл' in category_name:
-            characteristics = []
-            if obj.mounting_type:
-                characteristics.append(f"<b>Тип:</b> {obj.mounting_type}")
-            if obj.response_type:
-                characteristics.append(f"<b>Тип ответки:</b> {obj.response_type}")
-            if obj.hinge_angle:
-                characteristics.append(f"<b>Угол открывания:</b> {obj.hinge_angle}°")
-            if obj.hinge_closing_type:
-                characteristics.append(f"<b>Тип закрывания:</b> {obj.hinge_closing_type}")
-
-            if characteristics:
-                return mark_safe("<br>".join(characteristics))
-            else:
-                return "Заполните характеристики для петель"
-
-        # Для направляющих
-        elif 'направля' in category_name:
-            characteristics = []
-            if obj.mounting_type:
-                characteristics.append(f"<b>Тип:</b> {obj.mounting_type}")
-            if obj.runner_size:
-                characteristics.append(f"<b>Размер направляющих:</b> {obj.runner_size} мм")
-
-            if characteristics:
-                return mark_safe("<br>".join(characteristics))
-            else:
-                return "Заполните характеристики для направляющих"
-
-        # Для других категорий
+        characteristics = []
+        
+        # Показываем характеристики из полей категории
+        if obj.category:
+            category_fields = obj.get_category_fields()
+            for item in category_fields:
+                field = item['field']
+                value = item['value']
+                if value:
+                    characteristics.append(f"<b>{field.name}:</b> {value}")
+        
+        # Показываем индивидуальные характеристики (из шаблонов)
+        custom_fields = obj.get_custom_characteristics()
+        for custom_field in custom_fields:
+            if custom_field.value:
+                characteristics.append(f"<b>{custom_field.name}:</b> {custom_field.value}")
+        
+        if characteristics:
+            return mark_safe("<br>".join(characteristics))
         else:
-            return "Характеристики не определены для этой категории"
+            msg = []
+            if obj.category:
+                if obj.category.category_fields.exists():
+                    msg.append("Добавьте индивидуальные характеристики через вкладку 'Индивидуальные характеристики', выбрав шаблоны из категории.")
+                else:
+                    msg.append("Сначала создайте шаблоны характеристик в категории, затем добавьте их к продукту.")
+            else:
+                msg.append("Выберите категорию для продукта, чтобы добавить индивидуальные характеристики.")
+            return " ".join(msg)
 
     product_characteristics.short_description = 'Характеристики товара'
 
     def get_price_comparison(self, obj):
-        """Объединенное отображение цен со скидкой и без"""
+        """Отображение цены после парсинга"""
         if not obj.parsed_price:
             return "Цена не получена"
 
-        result = []
-        result.append(f"В интернете: {obj.parsed_price} ₽")
-
-        if obj.store and obj.store.discount_percent:
-            discount = obj.parsed_price * (obj.store.discount_percent / 100)
-            final_price = obj.parsed_price - discount
-            result.append(f"Цена со скидкой %{obj.store.discount_percent:.0f}: {final_price:.1f} ₽")
-        else:
-            result.append(f"Наша цена: {obj.parsed_price} ₽ (скидка не применена)")
-
-        return "ㅤㅤㅤㅤㅤㅤ".join(result)
+        return f"В интернете: {obj.parsed_price} ₽"
 
     get_price_comparison.short_description = 'В магазине '
     get_price_comparison.allow_tags = True
@@ -170,19 +293,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     get_our_price_with_discount.short_description = 'Наша цена'
 
-    def save_model(self, request, obj, form, change):
-        # Обрабатываем парсинг цены
-        if form.cleaned_data.get('parse_now') and obj.source_url:
-            try:
-                parsed_price = self.parse_price(obj.source_url, obj.store)
-                obj.parsed_price = parsed_price
-                obj.last_parsed = timezone.now()
-            except Exception as e:
-                self.message_user(request, f"Ошибка парсинга: {str(e)}", level='ERROR')
-
-        super().save_model(request, obj, form, change)
-
-    def parse_price(self, url, store):
+    def parse_price(self, url):
         """Универсальная функция парсинга цены"""
         try:
             headers = {
@@ -197,11 +308,11 @@ class ProductAdmin(admin.ModelAdmin):
 
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            # Если указан магазин, используем его селектор
-            if store and store.price_selector:
-                price_element = soup.select_one(store.price_selector)
-                if price_element:
-                    return self.extract_price_from_text(price_element.get_text())
+            # Пробуем стандартные селекторы для популярных селекторов цен
+            price_element = None
+            # Здесь можно добавить стандартные селекторы для различных сайтов
+            if price_element:
+                return self.extract_price_from_text(price_element.get_text())
 
             # Автоопределение для MDM
             if 'mdm-' in url or 'mdm.com' in url:
@@ -258,7 +369,7 @@ class ProductAdmin(admin.ModelAdmin):
     def parse_price_view(self, request, object_id):
         product = get_object_or_404(Product, id=object_id)
         try:
-            price = self.parse_price(product.source_url, product.store)
+            price = self.parse_price(product.source_url)
             product.parsed_price = price
             product.last_parsed = timezone.now()
             product.save()
@@ -267,17 +378,17 @@ class ProductAdmin(admin.ModelAdmin):
             return JsonResponse({'success': False, 'error': str(e)})
 
     class Media:
-        js = ('js/product_discount.js', 'js/mounting_type.js')
+        js = ('js/product_discount.js', 'js/mounting_type.js', 'js/category_fields.js')
         css = {
             'all': ('css/admin_custom.css',)
         }
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Переопределяем get_form для правильной работы с динамическими полями"""
+        form = super().get_form(request, obj, **kwargs)
+        return form
 
-@admin.register(Plita)
-class PlitaAdmin(admin.ModelAdmin):
-    list_display = ['name', 'material', 'thickness', 'color', 'price_per_square_meter']
-    list_filter = ['material', 'thickness']
-    search_fields = ['name', 'material', 'color']
-    ordering = ['material', 'thickness', 'name']
+# Плиты больше не используются
 
 @admin.action(description="Запарсить цены для выбранных товаров")
 def parse_selected_prices(modeladmin, request, queryset):
@@ -287,7 +398,7 @@ def parse_selected_prices(modeladmin, request, queryset):
     for product in queryset:
         if product.source_url:
             try:
-                parsed_price = modeladmin.parse_price(product.source_url, product.store)
+                parsed_price = modeladmin.parse_price(product.source_url)
                 product.parsed_price = parsed_price
                 product.last_parsed = timezone.now()
                 product.save()
@@ -305,8 +416,41 @@ ProductAdmin.actions = [parse_selected_prices]
 
 # Регистрируем модели
 admin.site.register(Category, CategoryAdmin)
-admin.site.register(Store, StoreAdmin)
-admin.site.register(Brand, BrandAdmin)
+admin.site.register(CategoryField)
 admin.site.register(CalculationMethod, CalculationMethodAdmin)
+admin.site.register(Profession, ProfessionAdmin)
 admin.site.register(Designer, DesignerAdmin)
-admin.site.register(RecordPlita)
+# RecordPlita удалена - плиты теперь используют RecordProduct
+admin.site.register(Profile)
+
+
+@admin.register(WorkerPayment)
+class WorkerPaymentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'worker', 'record', 'role', 'amount', 'is_paid', 'paid_at', 'created_at']
+    list_filter = ['is_paid', 'role', 'created_at', 'paid_at']
+    search_fields = ['worker__name', 'worker__surname', 'record__first_name', 'record__last_name', 'record__id']
+    readonly_fields = ['created_at', 'updated_at']
+    list_editable = ['is_paid']
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('record', 'worker', 'role', 'amount')
+        }),
+        ('Статус оплаты', {
+            'fields': ('is_paid', 'paid_at')
+        }),
+        ('Временные метки', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        # Автоматически устанавливаем paid_at при отметке как оплачено
+        if obj.is_paid and not obj.paid_at:
+            from django.utils import timezone
+            obj.paid_at = timezone.now()
+        elif not obj.is_paid:
+            obj.paid_at = None
+        super().save_model(request, obj, form, change)

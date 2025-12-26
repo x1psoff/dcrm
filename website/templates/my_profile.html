@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% block title %}Мой профиль - Домашний очаг{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="mb-0">
+            <i class="bi bi-person-circle me-2"></i>
+            Мой профиль
+          </h3>
+        </div>
+        <div class="card-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags|default:'success' }} alert-dismissible fade show">
+                <i class="bi bi-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+            
+            <!-- Тип пользователя -->
+            <div class="mb-4">
+              <div class="alert alert-info">
+                <h5 class="mb-2">
+                  <i class="bi bi-shield-check me-2"></i>
+                  Тип аккаунта
+                </h5>
+                <p class="mb-0 fs-5">
+                  <strong>{{ profile.user_type_display }}</strong>
+                  {% if profile.is_worker %}
+                    <span class="badge bg-primary ms-2">Работник</span>
+                  {% elif profile.is_customer %}
+                    <span class="badge bg-success ms-2">Заказчик</span>
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+
+            <!-- Информация о пользователе -->
+            <div class="mb-4">
+              <h5 class="mb-3">
+                <i class="bi bi-person me-2"></i>
+                Личные данные
+              </h5>
+              
+              <div class="row">
+                {% if user.is_staff or user.is_superuser %}
+                <div class="col-md-6 mb-3">
+                  <label for="username" class="form-label">
+                    <i class="bi bi-hash me-1"></i>
+                    ID в системе
+                  </label>
+                  <input type="text" class="form-control" id="username" value="{{ user.username }}" disabled>
+                  <small class="form-text text-muted">Уникальный идентификатор</small>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-{% if user.is_staff or user.is_superuser %}6{% else %}12{% endif %} mb-3">
+                  <label for="first_name" class="form-label">
+                    <i class="bi bi-person me-1"></i>
+                    Имя
+                  </label>
+                  <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                </div>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="last_name" class="form-label">
+                    <i class="bi bi-person me-1"></i>
+                    Фамилия
+                  </label>
+                  <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                </div>
+              </div>
+            </div>
+
+            <!-- Telegram ID и верификация -->
+            <div class="mb-4">
+              <h5 class="mb-3">
+                <i class="bi bi-telegram me-2"></i>
+                Telegram
+              </h5>
+              
+              <div class="row">
+                <div class="col-md-8 mb-3">
+                  <label for="telegram_id" class="form-label">
+                    <i class="bi bi-at me-1"></i>
+                    Telegram ID
+                  </label>
+                  <div class="input-group">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      id="telegram_id" 
+                      value="{{ profile.telegram_id|default:'Не указан' }}" 
+                      disabled
+                    >
+                    {% if profile.telegram_verified %}
+                      <span class="input-group-text bg-success text-white">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Подтвержден
+                      </span>
+                    {% else %}
+                      <span class="input-group-text bg-warning text-dark">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>
+                        Не подтвержден
+                      </span>
+                    {% endif %}
+                  </div>
+                  <small class="form-text text-muted">
+                    ID автоматически заполняется при подтверждении через бота
+                  </small>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                  <label class="form-label text-white">.</label>
+                  <form method="post" style="margin-top: -8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="generate_code">
+                    <button type="submit" class="btn btn-primary w-100">
+                      <i class="bi bi-key me-1"></i>
+                      {% if profile.verification_code %}
+                        Новый код
+                      {% else %}
+                        Получить код
+                      {% endif %}
+                    </button>
+                  </form>
+                  {% if profile.verification_code and not profile.telegram_verified %}
+                    <small class="form-text text-info d-block mt-2">
+                      Отправьте боту:<br>
+                      <code>/verify {{ profile.verification_code }}</code>
+                    </small>
+                  {% endif %}
+                </div>
+              </div>
+              
+              {% if not profile.telegram_verified %}
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Как подтвердить Telegram:</strong>
+                <ol class="mb-0 mt-2">
+                  <li>Нажмите кнопку "Получить код" выше</li>
+                  <li>Откройте бота в Telegram (ссылка будет здесь или у администратора)</li>
+                  <li>Отправьте команду <code>/verify КОД</code></li>
+                  <li>Ваш аккаунт будет подтвержден автоматически</li>
+                </ol>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Информация о Designer (только просмотр) -->
+            {% if profile.designer %}
+            <div class="mb-4">
+              <h5 class="mb-3">
+                <i class="bi bi-briefcase me-2"></i>
+                Рабочая информация
+              </h5>
+              
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label text-muted">Профессия</label>
+                  <div class="form-control-plaintext">
+                    <span class="badge bg-info fs-6">{{ profile.designer.get_profession_display }}</span>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label text-muted">Designer</label>
+                  <div class="form-control-plaintext">
+                    <strong>{{ profile.designer.name }} {{ profile.designer.surname }}</strong>
+                  </div>
+                </div>
+                {% if profile.designer.method %}
+                <div class="col-md-4 mb-3">
+                  <label class="form-label text-muted">Метод расчета</label>
+                  <div class="form-control-plaintext">
+                    <span class="badge bg-success">{{ profile.designer.method.name }}</span>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% else %}
+            <div class="mb-4">
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Вам не назначен Designer. Обратитесь к администратору для назначения профессии.
+              </div>
+            </div>
+            {% endif %}
+
+            <input type="hidden" name="action" value="update_profile">
+            <div class="d-flex justify-content-between">
+              <a href="{% url 'home' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>
+                Назад
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>
+                Сохранить изменения
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

@@ -25,7 +25,7 @@
               <div class="card-body">
                 <i class="bi bi-people text-primary fs-1"></i>
                 <h6 class="card-title mt-2">Всего записей</h6>
-                <p class="card-text fs-4 fw-bold">{{ records|length }}</p>
+                <p class="card-text fs-4 fw-bold">{{ status_stats.total }}</p>
               </div>
             </div>
           </div>
@@ -93,24 +93,44 @@
               <thead class="table-light">
                 <tr>
                   <th scope="col">
-                    <i class="bi bi-hash me-1"></i>
-                    ID
+                    <a href="?sort_by=id&sort_order={{ next_sort_order }}&prev_sort_by={{ sort_by }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="text-decoration-none text-dark sortable-header">
+                      <i class="bi bi-hash me-1"></i>
+                      ID
+                      {% if sort_by == 'id' %}
+                        <i class="bi bi-arrow-{% if sort_order == 'desc' %}down{% else %}up{% endif %} ms-1"></i>
+                      {% endif %}
+                    </a>
                   </th>
                   <th scope="col">
                     <i class="bi bi-person me-1"></i>
                     Клиент
                   </th>
                   <th scope="col">
-                    <i class="bi bi-flag me-1"></i>
-                    Статус
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-flag me-1"></i>
+                      <span class="me-2">Статус</span>
+                      <select class="form-select form-select-sm" style="width: auto; min-width: 150px;" onchange="window.location.href=this.value">
+                        <option value="?{% if sort_by %}sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}">Все статусы</option>
+                        <option value="?status=otrisovka{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}" {% if status_filter == 'otrisovka' %}selected{% endif %}>Отрисовка</option>
+                        <option value="?status=zhdem_material{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}" {% if status_filter == 'zhdem_material' %}selected{% endif %}>Ждем материала</option>
+                        <option value="?status=priekhal_v_ceh{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}" {% if status_filter == 'priekhal_v_ceh' %}selected{% endif %}>В цехе</option>
+                        <option value="?status=na_raspile{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}" {% if status_filter == 'na_raspile' %}selected{% endif %}>На распиле</option>
+                        <option value="?status=zakaz_gotov{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}" {% if status_filter == 'zakaz_gotov' %}selected{% endif %}>Готово</option>
+                      </select>
+                    </div>
                   </th>
                   <th scope="col">
                     <i class="bi bi-cash-stack me-1"></i>
                     Сумма по договору
                   </th>
                   <th scope="col">
-                    <i class="bi bi-calendar me-1"></i>
-                    Дата создания
+                    <a href="?sort_by=created_at&sort_order={{ next_sort_order }}&prev_sort_by={{ sort_by }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="text-decoration-none text-dark sortable-header">
+                      <i class="bi bi-calendar me-1"></i>
+                      Дата создания
+                      {% if sort_by == 'created_at' %}
+                        <i class="bi bi-arrow-{% if sort_order == 'desc' %}down{% else %}up{% endif %} ms-1"></i>
+                      {% endif %}
+                    </a>
                   </th>
                   <th scope="col" class="text-center">
                     <i class="bi bi-gear me-1"></i>
@@ -199,6 +219,42 @@
               </tbody>
             </table>
           </div>
+          {% if total_pages > 1 %}
+            <div class="card-footer">
+              <div class="d-flex justify-content-end align-items-center">
+                <nav aria-label="Page navigation">
+                  <ul class="pagination mb-0 me-3">
+                    {% if page > 1 and page_numbers|first != 1 %}
+                      <li class="page-item">
+                        <a class="page-link" href="?page=1{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                          1
+                        </a>
+                      </li>
+                      {% if page_numbers|first > 2 %}
+                        <li class="page-item disabled">
+                          <span class="page-link">...</span>
+                        </li>
+                      {% endif %}
+                    {% endif %}
+                    {% for page_num in page_numbers %}
+                      <li class="page-item {% if page_num == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ page_num }}{% if sort_by %}&sort_by={{ sort_by }}&sort_order={{ sort_order }}&prev_sort_by={{ sort_by }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                          {{ page_num }}
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </nav>
+                <div class="d-flex align-items-center">
+                  <label for="page-search" class="form-label mb-0 me-2">Страница:</label>
+                  <input type="number" class="form-control form-control-sm" id="page-search" min="1" max="{{ total_pages }}" value="{{ page }}" style="width: 80px;" onkeypress="if(event.key==='Enter') { goToPage(); }">
+                  <button class="btn btn-sm btn-outline-primary ms-2" onclick="goToPage()">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          {% endif %}
         {% else %}
           <div class="text-center py-5">
             <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
@@ -308,6 +364,24 @@
   .btn-group .btn:not(:last-child) {
     margin-right: 2px;
   }
+  
+  .sortable-header {
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .sortable-header:hover {
+    color: var(--bs-primary) !important;
+  }
+  
+  .pagination .page-item.active .page-link {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+  }
+  
+  #page-search {
+    text-align: center;
+  }
 </style>
 
 <script>
@@ -327,5 +401,32 @@
         });
     }, false);
 })();
+
+// Функция для перехода на указанную страницу
+function goToPage() {
+    var pageInput = document.getElementById('page-search');
+    var page = parseInt(pageInput.value);
+    var totalPages = parseInt('{{ total_pages|default:1 }}');
+    
+    if (isNaN(page) || page < 1) {
+        page = 1;
+    } else if (page > totalPages) {
+        page = totalPages;
+    }
+    
+    var url = '?page=' + page;
+    var sortBy = '{{ sort_by|default:"" }}';
+    var sortOrder = '{{ sort_order|default:"" }}';
+    var statusFilter = '{{ status_filter|default:"" }}';
+    
+    if (sortBy) {
+        url += '&sort_by=' + sortBy + '&sort_order=' + sortOrder + '&prev_sort_by=' + sortBy;
+    }
+    if (statusFilter) {
+        url += '&status=' + statusFilter;
+    }
+    
+    window.location.href = url;
+}
 </script>
 {% endblock %}

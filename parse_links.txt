@@ -1,0 +1,25 @@
+# Вставляйте по одной ссылке на строку (detail-страницы товаров)
+# Пример:
+# https://amix-tk.ru/catalog/....
+
+https://amix-tk.ru/catalog/petli/hettich-sensys/9091744/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9072530/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9072526/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9072525/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8645i-110-c0/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9071313/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8645i-110-c0-obsidian/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9091741/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8645i-110-c15/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8675-110/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9091740/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8645i-110-c08/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8675-c09/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9091739/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8639i-w30/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8639i-w45/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8639i-w90/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8669/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9091748/
+https://amix-tk.ru/catalog/petli/hettich-sensys/sensys-8657i-165/
+https://amix-tk.ru/catalog/petli/hettich-sensys/9091767/

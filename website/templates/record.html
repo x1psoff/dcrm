@@ -24,7 +24,7 @@
                         <i class="bi bi-arrow-left me-1"></i>
                         Назад
                     </a>
-                    {% if request.user.is_authenticated %}
+                    {% if request.user.is_authenticated and request.user.is_staff %}
                         <a href="{% url 'update_record' customer_record.id %}" class="btn btn-outline-primary">
                             <i class="bi bi-pencil me-1"></i>
                             Редактировать
@@ -42,6 +42,7 @@
     <!-- Основная информация и расчеты -->
     <div class="row mb-4">
         <!-- Данные клиента -->
+        {% if show_customer_data %}
         <div class="col-lg-4 mb-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -93,9 +94,31 @@
                         <div class="col-12">
                             <div class="d-flex align-items-center">
                                 <i class="bi bi-flag text-danger me-2"></i>
-                                <div>
+                                <div class="flex-grow-1">
                                     <small class="text-muted">Статус заказа</small>
-                                    <div class="fw-semibold">
+                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                    <form method="post" action="{% url 'update_record_status' customer_record.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <select name="status" class="form-select form-select-sm mt-1" onchange="this.form.submit()" style="max-width: 250px;">
+                                            <option value="otrisovka" {% if customer_record.status == 'otrisovka' %}selected{% endif %}>
+                                                Отрисовка
+                                            </option>
+                                            <option value="zhdem_material" {% if customer_record.status == 'zhdem_material' %}selected{% endif %}>
+                                                Ждем прибытия материала
+                                            </option>
+                                            <option value="priekhal_v_ceh" {% if customer_record.status == 'priekhal_v_ceh' %}selected{% endif %}>
+                                                Приехал в цех
+                                            </option>
+                                            <option value="na_raspile" {% if customer_record.status == 'na_raspile' %}selected{% endif %}>
+                                                На распиле
+                                            </option>
+                                            <option value="zakaz_gotov" {% if customer_record.status == 'zakaz_gotov' %}selected{% endif %}>
+                                                Заказ готов
+                                            </option>
+                                        </select>
+                                    </form>
+                                    {% else %}
+                                    <div class="fw-semibold mt-1">
                                         {% if customer_record.status %}
                                             {% if customer_record.status == 'otrisovka' %}
                                                 <span class="badge bg-info">
@@ -124,6 +147,7 @@
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -131,6 +155,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Оплата -->
         <div class="col-lg-4 mb-4">
@@ -143,6 +168,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
+                        {% if show_advance %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-muted">Аванс</span>
@@ -151,6 +177,8 @@
                                 </span>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if show_contract_amount %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-muted">Сумма по договору</span>
@@ -159,16 +187,41 @@
                                 </span>
                             </div>
                         </div>
-                        {% if customer_record.designer %}
-                        <div class="col-12">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-person-workspace text-primary me-2"></i>
-                                <div>
-                                    <small class="text-muted">Проектировщик</small>
-                                    <div class="fw-semibold">{{ customer_record.designer.name }}</div>
+                        {% endif %}
+                        {% if show_workers_info %}
+                            {% if customer_record.designer %}
+                            <div class="col-12">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-person-workspace text-primary me-2"></i>
+                                    <div>
+                                        <small class="text-muted">Проектировщик</small>
+                                        <div class="fw-semibold">{{ customer_record.designer.name }}</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            {% endif %}
+                            {% if customer_record.designer_worker %}
+                            <div class="col-12">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-palette text-info me-2"></i>
+                                    <div>
+                                        <small class="text-muted">Дизайнер</small>
+                                        <div class="fw-semibold">{{ customer_record.designer_worker.name }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if customer_record.assembler_worker %}
+                            <div class="col-12">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-tools text-warning me-2"></i>
+                                    <div>
+                                        <small class="text-muted">Сборщик</small>
+                                        <div class="fw-semibold">{{ customer_record.assembler_worker.name }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -186,33 +239,111 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-2 mb-3">
+                        {% if show_components %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between">
                                 <span class="text-muted">Комплектующие</span>
                                 <span class="fw-semibold">{{ total_components|floatformat:2 }} ₽</span>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if show_expenses %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between">
                                 <span class="text-muted">Непланируемые расходы</span>
                                 <span class="fw-semibold">{{ total_expenses|floatformat:2 }} ₽</span>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if show_designer_salary %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between">
                                 <span class="text-muted">Проектировщик{% if designer_info %} ({{ designer_info }}){% endif %}</span>
                                 <span class="fw-semibold">{{ designer_salary|floatformat:2 }} ₽</span>
                             </div>
                         </div>
-                        {% if customer_record.designer and customer_record.designer.method and 'погон' in customer_record.designer.method.name|lower %}
+                        {% endif %}
+                        {% if customer_record.designer %}
+                            {% if customer_record.designer.method %}
+                                {% if 'погон' in customer_record.designer.method.name|lower %}
+                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                    <div class="col-12">
+                                        <form method="post" action="{% url 'set_designer_manual_salary' customer_record.id %}" class="d-flex align-items-center gap-2">
+                                            {% csrf_token %}
+                                            <span class="text-muted small">Погонные метры проектировщика:</span>
+                                            <input type="number" step="0.01" name="designer_manual_salary" id="designer_manual_salary" 
+                                                   class="form-control form-control-sm" value="{% if customer_record.designer_manual_salary is not None %}{{ customer_record.designer_manual_salary }}{% endif %}" min="0">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                        {% if customer_record.designer_worker %}
+                            {% if customer_record.designer_worker.method %}
+                                {% if 'погон' in customer_record.designer_worker.method.name|lower %}
+                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                    <div class="col-12">
+                                        <form method="post" action="{% url 'set_designer_worker_manual_salary' customer_record.id %}" class="d-flex align-items-center gap-2">
+                                            {% csrf_token %}
+                                            <span class="text-muted small">Погонные метры дизайнера:</span>
+                                            <input type="number" step="0.01" name="designer_worker_manual_salary" id="designer_worker_manual_salary" 
+                                                   class="form-control form-control-sm" value="{% if customer_record.designer_worker_manual_salary is not None %}{{ customer_record.designer_worker_manual_salary }}{% endif %}" min="0">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                        {% if customer_record.assembler_worker %}
+                            {% if customer_record.assembler_worker.method %}
+                                {% if 'погон' in customer_record.assembler_worker.method.name|lower %}
+                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                    <div class="col-12">
+                                        <form method="post" action="{% url 'set_assembler_worker_manual_salary' customer_record.id %}" class="d-flex align-items-center gap-2">
+                                            {% csrf_token %}
+                                            <span class="text-muted small">Погонные метры сборщика:</span>
+                                            <input type="number" step="0.01" name="assembler_worker_manual_salary" id="assembler_worker_manual_salary" 
+                                                   class="form-control form-control-sm" value="{% if customer_record.assembler_worker_manual_salary is not None %}{{ customer_record.assembler_worker_manual_salary }}{% endif %}" min="0">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                        {% if show_designer_worker_salary and designer_worker_salary > 0 %}
                         <div class="col-12">
-                            <form method="post" action="{% url 'set_designer_manual_salary' customer_record.id %}" class="d-flex align-items-center gap-2">
-                                {% csrf_token %}
-                                <span class="text-muted small">Ручной ввод:</span>
-                                <input type="number" step="0.01" name="designer_manual_salary" id="designer_manual_salary" 
-                                       class="form-control form-control-sm" value="{{ customer_record.designer_manual_salary|default_if_none:'' }}">
-                                <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
-                            </form>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Дизайнер{% if designer_worker_info %} ({{ designer_worker_info }}){% endif %}</span>
+                                <span class="fw-semibold">{{ designer_worker_salary|floatformat:2 }} ₽</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if show_assembler_worker_salary and assembler_worker_salary > 0 %}
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Сборщик{% if assembler_worker_info %} ({{ assembler_worker_info }}){% endif %}</span>
+                                <span class="fw-semibold">{{ assembler_worker_salary|floatformat:2 }} ₽</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if delivery_price > 0 %}
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Доставка</span>
+                                <span class="fw-semibold">{{ delivery_price|floatformat:2 }} ₽</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if workshop_price > 0 %}
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Цех</span>
+                                <span class="fw-semibold">{{ workshop_price|floatformat:2 }} ₽</span>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -225,6 +356,7 @@
                     </div>
 
                     <!-- Распределение моржи -->
+                    {% if show_margin %}
                     <div class="border rounded p-3 bg-light">
                         <form method="post" action="{% url 'set_margin_flags' customer_record.id %}">
                             {% csrf_token %}
@@ -251,12 +383,14 @@
                             <button type="submit" class="btn btn-sm btn-primary w-100">Сохранить</button>
                         </form>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Непланируемые расходы -->
+    {% if show_expenses %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -267,7 +401,8 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <!-- Форма добавления расхода -->
+                    <!-- Форма добавления расхода - только для администраторов -->
+                    {% if request.user.is_authenticated and request.user.is_staff %}
                     <form method="post" action="{% url 'add_unplanned_expense' customer_record.id %}" class="row g-3 mb-4">
                         {% csrf_token %}
                         <div class="col-md-4">
@@ -295,59 +430,125 @@
                             </button>
                         </div>
                     </form>
+                    {% endif %}
 
                     <!-- Список расходов -->
                     {% if customer_record.unplanned_expenses.all %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>
-                                            <i class="bi bi-box me-1"></i>
-                                            Предмет
-                                        </th>
-                                        <th>
-                                            <i class="bi bi-cash me-1"></i>
-                                            Цена
-                                        </th>
-                                        <th>
-                                            <i class="bi bi-person me-1"></i>
-                                            Кто потратил
-                                        </th>
-                                        <th class="text-center">
-                                            <i class="bi bi-gear me-1"></i>
-                                            Действия
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for expense in customer_record.unplanned_expenses.all %}
-                                    <tr>
-                                        <td class="fw-semibold">{{ expense.item }}</td>
-                                        <td>
-                                            <span class="fw-bold text-success">{{ expense.price|floatformat:2 }} ₽</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info">{{ expense.spent_by }}</span>
-                                        </td>
-                                        <td class="text-center">
-                                            <a href="{% url 'delete_unplanned_expense' expense.id %}" 
-                                               class="btn btn-sm btn-outline-danger" 
-                                               onclick="return confirm('Удалить этот расход?')">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                                <tfoot class="table-light">
-                                    <tr>
-                                        <th colspan="2">Итого расходов:</th>
-                                        <th class="text-success">{{ total_expenses|floatformat:2 }} ₽</th>
-                                        <th></th>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                        <div class="row">
+                            <!-- Расходы Юры -->
+                            <div class="col-md-6 mb-4">
+                                <h6 class="text-primary mb-3">
+                                    <i class="bi bi-person-circle me-2"></i>
+                                    Расходы Юры
+                                    <span class="badge bg-primary ms-2">{{ total_expenses_yura|floatformat:2 }} ₽</span>
+                                </h6>
+                                {% if expenses_yura %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead class="table-primary">
+                                                <tr>
+                                                    <th>Предмет</th>
+                                                    <th>Цена</th>
+                                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                                    <th class="text-center">Действия</th>
+                                                    {% endif %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for expense in expenses_yura %}
+                                                <tr>
+                                                    <td class="fw-semibold">{{ expense.item }}</td>
+                                                    <td>
+                                                        <span class="fw-bold text-success">{{ expense.price|floatformat:2 }} ₽</span>
+                                                    </td>
+                                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                                    <td class="text-center">
+                                                        <a href="{% url 'delete_unplanned_expense' expense.id %}" 
+                                                           class="btn btn-sm btn-outline-danger" 
+                                                           onclick="return confirm('Удалить этот расход?')">
+                                                            <i class="bi bi-trash"></i>
+                                                        </a>
+                                                    </td>
+                                                    {% endif %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center text-muted py-3">
+                                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                        <p class="mt-2 mb-0">Нет расходов</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Расходы Олега -->
+                            <div class="col-md-6 mb-4">
+                                <h6 class="text-success mb-3">
+                                    <i class="bi bi-person-circle me-2"></i>
+                                    Расходы Олега
+                                    <span class="badge bg-success ms-2">{{ total_expenses_oleg|floatformat:2 }} ₽</span>
+                                </h6>
+                                {% if expenses_oleg %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead class="table-success">
+                                                <tr>
+                                                    <th>Предмет</th>
+                                                    <th>Цена</th>
+                                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                                    <th class="text-center">Действия</th>
+                                                    {% endif %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for expense in expenses_oleg %}
+                                                <tr>
+                                                    <td class="fw-semibold">{{ expense.item }}</td>
+                                                    <td>
+                                                        <span class="fw-bold text-success">{{ expense.price|floatformat:2 }} ₽</span>
+                                                    </td>
+                                                    {% if request.user.is_authenticated and request.user.is_staff %}
+                                                    <td class="text-center">
+                                                        <a href="{% url 'delete_unplanned_expense' expense.id %}" 
+                                                           class="btn btn-sm btn-outline-danger" 
+                                                           onclick="return confirm('Удалить этот расход?')">
+                                                            <i class="bi bi-trash"></i>
+                                                        </a>
+                                                    </td>
+                                                    {% endif %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center text-muted py-3">
+                                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                        <p class="mt-2 mb-0">Нет расходов</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Общая сводка -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-info mb-0">
+                                    <div class="row text-center">
+                                        <div class="col-md-4">
+                                            <strong>Юра:</strong> {{ total_expenses_yura|floatformat:2 }} ₽
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Олег:</strong> {{ total_expenses_oleg|floatformat:2 }} ₽
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Итого:</strong> {{ total_expenses|floatformat:2 }} ₽
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     {% else %}
                         <div class="text-center py-4">
@@ -360,8 +561,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Комплектация мебели -->
+    {% if show_components %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -406,21 +609,20 @@
                                             Категория
                                         </th>
                                         <th>
-                                            <i class="bi bi-award me-1"></i>
-                                            Бренд
-                                        </th>
-                                        <th>
                                             <i class="bi bi-list-ul me-1"></i>
                                             Характеристики
                                         </th>
+                                        {% if user_role != 'сборщики' %}
                                         <th>
                                             <i class="bi bi-currency-exchange me-1"></i>
                                             Цена за ед.
                                         </th>
+                                        {% endif %}
                                         <th>
                                             <i class="bi bi-hash me-1"></i>
                                             Количество
                                         </th>
+                                        {% if user_role != 'сборщики' %}
                                         <th>
                                             <i class="bi bi-cash-stack me-1"></i>
                                             Сумма
@@ -429,6 +631,7 @@
                                             <i class="bi bi-person me-1"></i>
                                             Купил
                                         </th>
+                                        {% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -447,7 +650,6 @@
                                             </td>
                                             <td class="fw-semibold">{{ component.name }}</td>
                                             <td>{{ component.category }}</td>
-                                            <td>{{ component.brand }}</td>
                                             <td class="component-specs">
                                                 {% if component.is_product %}
                                                     {% if component.specifications.hinge_angle %}<span class="spec">Угол: {{ component.specifications.hinge_angle }}</span>{% endif %}
@@ -461,25 +663,36 @@
                                                     {% if component.specifications.color %}<span class="spec">Цвет: {{ component.specifications.color }}</span>{% endif %}
                                                 {% endif %}
                                             </td>
+                                            {% if user_role != 'сборщики' %}
                                             <td class="fw-semibold">{{ component.unit_price|floatformat:2 }} ₽</td>
+                                            {% endif %}
                                             <td>
                                                 <span class="badge bg-light text-dark">{{ component.quantity }}</span>
                                             </td>
+                                            {% if user_role != 'сборщики' %}
                                             <td class="fw-bold text-success">{{ component.line_total|floatformat:2 }} ₽</td>
                                             <td>
                                                 <span class="badge bg-info">{{ component.buyer }}</span>
                                             </td>
+                                            {% endif %}
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
+                                        {% if user_role != 'сборщики' %}
                                         <th colspan="7" class="text-end">
                                             <i class="bi bi-calculator me-1"></i>
                                             Итого по комплектующим:
                                         </th>
                                         <th class="fw-bold fs-5 text-success">{{ total_components|floatformat:2 }} ₽</th>
                                         <th></th>
+                                        {% else %}
+                                        <th colspan="6" class="text-end">
+                                            <i class="bi bi-calculator me-1"></i>
+                                            Комплектующие
+                                        </th>
+                                        {% endif %}
                                     </tr>
                                 </tfoot>
                             </table>
@@ -488,16 +701,20 @@
                         <div class="text-center py-5">
                             <i class="bi bi-boxes text-muted" style="font-size: 3rem;"></i>
                             <h5 class="text-muted mt-3">Нет комплектующих</h5>
+                            {% if request.user.is_authenticated and request.user.is_staff %}
                             <p class="text-muted">Добавьте комплектующие для этой записи</p>
                             <a href="{% url 'add_products_to_record' customer_record.id %}" class="btn btn-primary">
                                 <i class="bi bi-plus-circle me-1"></i>
                                 Добавить комплектующие
                             </a>
+                            {% else %}
+                            <p class="text-muted">Комплектующие отсутствуют</p>
+                            {% endif %}
                         </div>
                     {% endif %}
 
-                    <!-- Управление комплектацией -->
-                    {% if unified_components %}
+                    <!-- Управление комплектацией - только для администраторов -->
+                    {% if unified_components and request.user.is_authenticated and request.user.is_staff %}
                         <div class="mt-4 pt-3 border-top">
                             <h6 class="mb-3">
                                 <i class="bi bi-gear me-2"></i>
@@ -514,14 +731,6 @@
                                     <i class="bi bi-trash me-1"></i>
                                     Очистить
                                 </a>
-                                <a href="{% url 'export_products' customer_record.id %}" class="btn btn-outline-success">
-                                    <i class="bi bi-download me-1"></i>
-                                    Экспорт
-                                </a>
-                                <a href="{% url 'process_csv_by_pk' customer_record.id %}" class="btn btn-outline-info">
-                                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>
-                                    Смета
-                                </a>
                             </div>
                         </div>
                     {% endif %}
@@ -529,8 +738,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Прикреплённые файлы -->
+    {% if show_files %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -541,6 +752,21 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- Форма добавления файла -->
+                    {% if request.user.is_authenticated %}
+                    <form method="post" action="{% url 'add_file' customer_record.id %}" enctype="multipart/form-data" class="mb-3">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="file" name="file" id="file" class="form-control" required accept="*/*" multiple>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload me-1"></i>
+                                Загрузить файлы
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Можно выбрать несколько файлов одновременно (Ctrl+Click или Shift+Click)</small>
+                    </form>
+                    {% endif %}
+                    
                     {% if customer_record.files.all %}
                         <div class="row g-3">
                             {% for file in customer_record.files.all %}
@@ -553,12 +779,17 @@
                                                 <small class="text-muted">Файл проекта</small>
                                             </div>
                                             <div class="btn-group">
-                                                <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <a href="{{ file.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Скачать">
                                                     <i class="bi bi-download"></i>
                                                 </a>
-                                                <a href="{% url 'process_csv_by_pk' customer_record.id %}" class="btn btn-sm btn-outline-success">
-                                                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                                                {% if request.user.is_authenticated %}
+                                                <a href="{% url 'delete_file' file.id %}" 
+                                                   class="btn btn-sm btn-outline-danger" 
+                                                   title="Удалить"
+                                                   onclick="return confirm('Удалить этот файл?')">
+                                                    <i class="bi bi-trash"></i>
                                                 </a>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -576,6 +807,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- Модальное окно для подтверждения удаления -->

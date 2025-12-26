@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.log
+
+# Virtual environments
+.env
+.env.*
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Media and uploads (will be in volume)
+media/uploads/
+media/records_excel/
+
+# Testing
+test.py
+*.md
+
+# 7z archives
+*.7z
+
+# Batch files
+*.bat
+
+# Temporary files
+parse_links.txt
+

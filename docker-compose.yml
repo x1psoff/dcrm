@@ -1,0 +1,14 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # Порт для доступа с других компьютеров
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+    command: python manage.py runserver 0.0.0.0:8000
+    restart: unless-stopped
+

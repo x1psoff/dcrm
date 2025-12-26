@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Профили пользователей - Домашний очаг{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="mb-0">
+        <i class="bi bi-people me-2"></i>
+        Профили пользователей
+      </h1>
+    </div>
+  </div>
+
+
+  <!-- Таблица профилей -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="bi bi-table me-2"></i>
+        Список профилей
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      {% if profiles %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">
+                  <i class="bi bi-person me-1"></i>
+                  Пользователь
+                </th>
+                <th scope="col">
+                  <i class="bi bi-shield-check me-1"></i>
+                  Права доступа
+                </th>
+                <th scope="col">
+                  <i class="bi bi-briefcase me-1"></i>
+                  Профессия
+                </th>
+                <th scope="col">
+                  <i class="bi bi-person-badge me-1"></i>
+                  Designer
+                </th>
+                <th scope="col">
+                  <i class="bi bi-gear me-1"></i>
+                  Метод расчета
+                </th>
+                <th scope="col" class="text-center">
+                  <i class="bi bi-gear me-1"></i>
+                  Действия
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for profile in profiles %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                        {{ profile.user.username|first|upper }}
+                      </div>
+                      <div>
+                        <strong>{{ profile.user.username }}</strong>
+                        {% if profile.user.first_name or profile.user.last_name %}
+                          <br>
+                          <small class="text-muted">
+                            {{ profile.user.first_name }} {{ profile.user.last_name }}
+                          </small>
+                        {% endif %}
+                        {% if profile.user.email %}
+                          <br>
+                          <small class="text-muted">
+                            <i class="bi bi-envelope me-1"></i>
+                            {{ profile.user.email }}
+                          </small>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    {% if profile.user.is_superuser %}
+                      <span class="badge bg-danger">
+                        <i class="bi bi-shield-fill-check me-1"></i>
+                        Супер-администратор
+                      </span>
+                    {% elif profile.user.is_staff %}
+                      <span class="badge bg-warning text-dark">
+                        <i class="bi bi-shield-check me-1"></i>
+                        Администратор
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary">
+                        <i class="bi bi-person me-1"></i>
+                        Пользователь
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if profile.designer %}
+                      <span class="badge bg-info">
+                        {{ profile.designer.get_profession_display }}
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary">Не назначен</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if profile.designer %}
+                      <strong>{{ profile.designer.name }} {{ profile.designer.surname }}</strong>
+                      {% if profile.designer.method %}
+                        <br>
+                        <small class="text-muted">
+                          Метод: {{ profile.designer.method.name }}
+                        </small>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if profile.designer %}
+                      {% if profile.designer.method %}
+                        <span class="badge bg-success">{{ profile.designer.method.name }}</span>
+                      {% else %}
+                        <span class="text-muted">Не указан</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <form method="post" class="d-inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="profile_id" value="{{ profile.id }}">
+                      <div class="input-group input-group-sm" style="min-width: 250px;">
+                        <select class="form-select form-select-sm" name="designer_id" onchange="this.form.submit()">
+                          <option value="">-- Не привязан --</option>
+                          {% for designer in designers %}
+                            <option value="{{ designer.id }}" {% if profile.designer and profile.designer.id == designer.id %}selected{% endif %}>
+                              {{ designer.name }} {{ designer.surname }} ({{ designer.get_profession_display }})
+                            </option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+          <h5 class="text-muted mt-3">Профилей не найдено</h5>
+          <p class="text-muted">Профилей пока нет</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+</style>
+{% endblock %}
+
