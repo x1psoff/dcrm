@@ -1,3 +1,33 @@
+# Python / caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# Secrets / env
+.env
+.env.*
+
+# Local DB / logs
+db.sqlite3
+*.log
+
+# Media uploads / generated exports
+media/*
+!media/templates/**
+!media/excel_templates/**
+!media/комплектация Кухни.xlsx
+media/uploads/**
+media/records_excel/**
+
+# Local data files
+data/**/*.csv
+data/**/*.xlsx
+
 # Git
 .git
 .gitignore

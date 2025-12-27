@@ -1,4 +1,3 @@
-from pathlib import Path
 import os
 from dotenv import load_dotenv
 
@@ -9,16 +8,29 @@ CSV_FILE_PATH = os.path.join(BASE_DIR, 'data', '1819.csv')
 # External DB path (optional). If not set, use project db.sqlite3
 DB_PATH = os.environ.get('DB_PATH') or os.path.join(BASE_DIR, 'db.sqlite3')
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+def _env_csv(name: str, default: list[str]) -> list[str]:
+    val = os.environ.get(name)
+    if not val:
+        return default
+    items = [x.strip() for x in val.split(",")]
+    return [x for x in items if x]
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-jcxge@8cwms-4-$&qia^6p+^8-qwrsw7vey#0e6e326apg3mvo'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-jcxge@8cwms-4-$&qia^6p+^8-qwrsw7vey#0e6e326apg3mvo')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _env_bool("DEBUG", True)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = _env_csv("ALLOWED_HOSTS", ["*"])
 
 # Application definition
 INSTALLED_APPS = [
@@ -87,7 +99,7 @@ STATICFILES_DIRS = [
 
 
 MEDIA_URL = '/media/'  # URL для доступа к файлам
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Локальный путь к файлам
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media')  # Локальный путь к файлам
 
 # Telegram Bot Settings
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
