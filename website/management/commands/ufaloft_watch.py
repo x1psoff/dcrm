@@ -3,12 +3,13 @@ import time
 from django.core.management.base import BaseCommand
 
 from selenium import webdriver
+import os
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from website.models import Record
-from website.utils.ufaloft import DEFAULT_DASHBOARD_URL, map_external_status_to_local, sync_by_index
+from website.utils.ufaloft import DEFAULT_DASHBOARD_URL, map_external_status_to_local, sync_by_index, parse_workshop_price
 from website.utils.ufaloft_selenium import parse_dashboard_with_driver
 
 
@@ -41,11 +42,26 @@ class Command(BaseCommand):
             self.stdout.write('Открываю Chrome браузер...')
 
         try:
-            # Используем встроенный Selenium Manager (автоматически найдет правильный ChromeDriver)
-            driver = webdriver.Chrome(options=chrome_options)
+            remote_url = os.environ.get("SELENIUM_REMOTE_URL", "").strip()
+            if remote_url:
+                self.stdout.write(f'Использую Remote Selenium: {remote_url}')
+                last_err = None
+                for attempt in range(1, 31):
+                    try:
+                        driver = webdriver.Remote(command_executor=remote_url, options=chrome_options)
+                        last_err = None
+                        break
+                    except Exception as e:
+                        last_err = e
+                        time.sleep(1)
+                if last_err is not None:
+                    raise last_err
+            else:
+                # Используем встроенный Selenium Manager (автоматически найдет правильный ChromeDriver)
+                driver = webdriver.Chrome(options=chrome_options)
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Ошибка запуска Chrome: {e}'))
-            self.stdout.write('Попробуйте запустить с --headless или установите ChromeDriver')
+            self.stdout.write('Попробуйте запустить с --headless или включите Remote Selenium (SELENIUM_REMOTE_URL)')
             return
         self.stdout.write('Открыл браузер. Выполните вход и 2FA, табличные строки появятся автоматически.')
         driver.get(dashboard_url)
@@ -82,17 +98,11 @@ class Command(BaseCommand):
             # Обновляем стоимость работы цеха
             if workshop_price:
                 try:
-                    # Парсим цену, убираем лишние символы
-                    price_str = workshop_price.replace(' ', '').replace(',', '.')
-                    # Извлекаем только числа
-                    import re
-                    price_match = re.search(r'(\d+(?:\.\d+)?)', price_str)
-                    if price_match:
-                        new_price = float(price_match.group(1))
-                        if record.workshop_price != new_price:
-                            record.workshop_price = new_price
-                            changed = True
-                except (ValueError, TypeError):
+                    new_price = parse_workshop_price(workshop_price)
+                    if new_price is not None and record.workshop_price != new_price:
+                        record.workshop_price = new_price
+                        changed = True
+                except Exception:
                     if options['verbose']:
                         self.stdout.write(f"[WARNING] Не удалось распарсить цену цеха: {workshop_price}")
             

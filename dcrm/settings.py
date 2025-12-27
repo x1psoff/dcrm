@@ -53,6 +53,13 @@ SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", default=False)
 # This is OFF by default because it weakens CSRF protections.
 CSRF_STRIP_NULL_ORIGIN = _env_bool("CSRF_STRIP_NULL_ORIGIN", default=False)
 
+# Base URL of the site (used for generated links / copy-to-clipboard).
+# Example: http://100.111.57.75:8088/
+_site_url = (os.environ.get("SITE_URL") or "http://100.111.57.75:8088/").strip()
+if _site_url and not _site_url.endswith("/"):
+    _site_url += "/"
+SITE_URL = _site_url
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',

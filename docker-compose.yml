@@ -41,6 +41,17 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TZ: ${TZ:-UTC}
       DJANGO_COLLECTSTATIC: ${DJANGO_COLLECTSTATIC:-0}
+      # UFALOFT (optional)
+      UFALOFT_VERIFY_SSL: ${UFALOFT_VERIFY_SSL:-1}
+      UFALOFT_CA_BUNDLE: ${UFALOFT_CA_BUNDLE:-}
+      UFALOFT_SCHEDULE_ENABLED: ${UFALOFT_SCHEDULE_ENABLED:-0}
+      UFALOFT_WATCH_ENABLED: ${UFALOFT_WATCH_ENABLED:-0}
+      UFALOFT_WATCH_INTERVAL_MIN: ${UFALOFT_WATCH_INTERVAL_MIN:-60}
+      UFALOFT_INDEX_FIELD: ${UFALOFT_INDEX_FIELD:-first_name}
+      UFALOFT_VERBOSE: ${UFALOFT_VERBOSE:-1}
+      UFALOFT_HEADLESS: ${UFALOFT_HEADLESS:-1}
+      # Remote Selenium (optional). If set, ufaloft_watch will use webdriver.Remote instead of local Chrome.
+      SELENIUM_REMOTE_URL: ${SELENIUM_REMOTE_URL:-http://selenium:4444/wd/hub}
       # CSRF / proxy settings (optional)
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       SECURE_PROXY_SSL_HEADER: ${SECURE_PROXY_SSL_HEADER:-0}
@@ -125,4 +136,48 @@ services:
       RETENTION_KEEP_WEEKLY: "8"
       RETENTION_KEEP_MONTHLY: "12"
     restart: unless-stopped
+
+  # Optional: interactive browser on server via noVNC (open from Windows),
+  # so you can login/2FA manually like on Windows GUI.
+  selenium:
+    image: selenium/standalone-chrome:4.25.0
+    shm_size: 2gb
+    restart: unless-stopped
+    environment:
+      SE_VNC_PASSWORD: ${SE_VNC_PASSWORD:-}
+    ports:
+      - "${SELENIUM_WEBDRIVER_PUBLISH:-4444}:4444"  # WebDriver endpoint
+      - "${SELENIUM_NOVNC_PUBLISH:-7900}:7900"      # noVNC in browser
+
+  # UFALOFT watcher as a dedicated long-running service (Linux-side),
+  # keeps the browser session open in selenium and syncs every N minutes.
+  ufaloft:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - web
+      - selenium
+    volumes:
+      - ./db.sqlite3:/data/db.sqlite3
+      - ./media:/data/media
+    environment:
+      DEBUG: ${DEBUG:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DB_PATH: ${DB_PATH:-/data/db.sqlite3}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+      TZ: ${TZ:-UTC}
+      # Remote Selenium (required for this service)
+      SELENIUM_REMOTE_URL: ${SELENIUM_REMOTE_URL:-http://selenium:4444/wd/hub}
+    command:
+      - python
+      - manage.py
+      - ufaloft_watch
+      - --interval-min
+      - "${UFALOFT_WATCH_INTERVAL_MIN:-1}"
+      - --index-field
+      - "${UFALOFT_INDEX_FIELD:-first_name}"
+      - --verbose
 

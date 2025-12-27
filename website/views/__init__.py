@@ -22,10 +22,11 @@ from .calculations import (
     calculate_record_total_components, calculate_record_total_expenses
 )
 from .analytics import analytics_dashboard
-from .profiles import my_profile, profiles_list
-from .utils import start_ufaloft_watch
+from .profiles import my_profile, profiles_list, staff_profile
+from .utils import start_ufaloft_watch, ufaloft_ui
 from .payments import payments_page, mark_payment_paid, mark_payment_unpaid
 from .create_product import create_product
+from .create_product import create_category
 
 __all__ = [
     # Auth
@@ -49,12 +50,12 @@ __all__ = [
     # Analytics
     'analytics_dashboard',
     # Profiles
-    'my_profile', 'profiles_list',
+    'my_profile', 'profiles_list', 'staff_profile',
     # Utils
-    'start_ufaloft_watch',
+    'start_ufaloft_watch', 'ufaloft_ui',
     # Payments
     'payments_page', 'mark_payment_paid', 'mark_payment_unpaid',
     # Create Product
-    'create_product',
+    'create_product', 'create_category',
 ]
 

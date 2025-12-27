@@ -95,25 +95,12 @@ class CategoryFieldInline(admin.TabularInline):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'fields_count']
     search_fields = ['name']
-    inlines = [CategoryFieldInline]
+    # В админке не показываем "поля категорий" (шаблоны характеристик) — управляется из UI
+    inlines = []
     
     fieldsets = (
         ('Название категории', {
             'fields': ('name',),
-        }),
-        ('Шаблоны характеристик', {
-            'fields': (),
-            'description': mark_safe('''
-                <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-                    <strong>Создайте шаблоны характеристик для этой категории.</strong><br>
-                    Эти шаблоны будут доступны для выбора при добавлении индивидуальных характеристик к элементам этой категории.<br><br>
-                    <strong>Как создать шаблон:</strong><br>
-                    1. Нажмите "Добавить еще одну Характеристика" ниже<br>
-                    2. Укажите название (например: "Угол открывания", "Тип ответки")<br>
-                    3. Выберите тип поля (Текст, Число или Выбор из списка)<br>
-                    4. Сохраните категорию
-                </div>
-            '''),
         }),
     )
     
@@ -416,7 +403,7 @@ ProductAdmin.actions = [parse_selected_prices]
 
 # Регистрируем модели
 admin.site.register(Category, CategoryAdmin)
-admin.site.register(CategoryField)
+# CategoryField (поля категорий) скрываем из админки
 admin.site.register(CalculationMethod, CalculationMethodAdmin)
 admin.site.register(Profession, ProfessionAdmin)
 admin.site.register(Designer, DesignerAdmin)

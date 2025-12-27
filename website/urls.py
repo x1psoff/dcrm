@@ -37,10 +37,13 @@ urlpatterns = [
     path('payments/<int:payment_id>/mark-paid/', mark_payment_paid, name='mark_payment_paid'),
     path('payments/<int:payment_id>/mark-unpaid/', mark_payment_unpaid, name='mark_payment_unpaid'),
     path('ufaloft/start/', start_ufaloft_watch, name='start_ufaloft_watch'),
+    path('ufaloft/ui/', ufaloft_ui, name='ufaloft_ui'),
     path('profile/', my_profile, name='my_profile'),
     path('profiles/', profiles_list, name='profiles_list'),
+    path('profiles/<int:user_id>/', staff_profile, name='staff_profile'),
     path('customer/<int:user_id>/', customer_detail, name='customer_detail'),
     path('create_product/', create_product, name='create_product'),
     path('products/', products_list, name='products_list'),
+    path('categories/create/', create_category, name='create_category'),
 
 ]

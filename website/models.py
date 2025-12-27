@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 
@@ -570,6 +571,42 @@ class Profile(models.Model):
     class Meta:
         verbose_name = "Профиль пользователя"
         verbose_name_plural = "Профили пользователей"
+
+
+class TailscaleInviteLink(models.Model):
+    """Одноразовые ссылки для подключения к VPN (Tailscale).
+
+    Ссылка должна выдаваться только 1 раз; после выдачи помечается как использованная.
+    """
+
+    url = models.URLField(unique=True, verbose_name="Ссылка приглашения")
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name="Когда использована")
+    used_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tailscale_invites_used",
+        verbose_name="Кому выдана (user)",
+    )
+
+    class Meta:
+        verbose_name = "Tailscale invite link"
+        verbose_name_plural = "Tailscale invite links"
+        ordering = ["id"]
+
+    def __str__(self):
+        return self.url
+
+    @property
+    def is_used(self):
+        return bool(self.used_at)
+
+    def mark_used(self, user: User | None = None, commit: bool = True):
+        self.used_at = timezone.now()
+        self.used_by = user
+        if commit:
+            self.save(update_fields=["used_at", "used_by"])
 
 
 class WorkerPayment(models.Model):

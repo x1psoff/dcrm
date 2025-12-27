@@ -47,6 +47,36 @@
   margin-bottom: 0.75rem;
   border-radius: 4px;
 }
+
+/* Minimal: no animations, but keep clear blue-filled icons */
+.btn,
+.form-control,
+.form-select,
+.input-group-text {
+  transition: none !important;
+  animation: none !important;
+}
+.btn:focus,
+.btn:active:focus,
+.form-control:focus,
+.form-select:focus {
+  box-shadow: none !important;
+}
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #0d6efd;
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.icon-pill.bi {
+  color: #fff;
+}
 </style>
 
 <div class="product-page">
@@ -96,12 +126,18 @@
               
               <div class="mb-3">
                 <label class="form-label">Категория</label>
-                <select class="form-select" name="category" id="categorySelect">
-                  <option value="">---</option>
-                  {% for cat in categories %}
-                    <option value="{{ cat.id }}" {% if selected_category and selected_category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
-                  {% endfor %}
-                </select>
+                <div class="input-group">
+                  <select class="form-select" name="category" id="categorySelect">
+                    <option value="">---</option>
+                    {% for cat in categories %}
+                      <option value="{{ cat.id }}" {% if selected_category and selected_category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" id="addCategoryBtn" title="Добавить категорию">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+                <small class="text-muted">Можно добавить новую категорию кнопкой справа</small>
               </div>
               
               <div class="mb-3">
@@ -132,7 +168,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="fw-bold">Добавить характеристику</span>
                   <button type="button" class="btn btn-outline-primary btn-sm" id="addNewFieldBtn">
-                    <i class="bi bi-plus-circle me-1"></i>Еще одну
+                    <i class="bi bi-plus me-1 icon-pill"></i>Еще одну
                   </button>
                 </div>
 
@@ -154,7 +190,7 @@
                             <div class="input-group">
                               <input type="text" class="form-control new-template-name" name="new_template_name[]" placeholder="Название нового шаблона">
                               <button type="button" class="btn btn-outline-secondary back-to-select-btn" title="Назад">
-                                <i class="bi bi-arrow-left"></i>
+                                <i class="bi bi-arrow-left icon-pill"></i>
                               </button>
                             </div>
                           </div>
@@ -170,6 +206,13 @@
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <!-- Нижняя кнопка: всегда под последней строкой, по центру -->
+                <div class="d-flex justify-content-center mt-2">
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="addNewFieldBottomBtn">
+                    <i class="bi bi-plus me-1 icon-pill"></i>Еще одну
+                  </button>
                 </div>
               {% else %}
                 <div class="text-center text-muted py-3">
@@ -202,6 +245,23 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // CSRF helper for fetch
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
   // Перезагрузка страницы при выборе категории
   const categorySelect = document.getElementById('categorySelect');
   if (categorySelect) {
@@ -215,15 +275,101 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Add new category (persist in DB)
+  const addCategoryBtn = document.getElementById('addCategoryBtn');
+  if (addCategoryBtn && categorySelect) {
+    addCategoryBtn.addEventListener('click', async function() {
+      const name = prompt('Название новой категории:');
+      if (!name) return;
+      const form = new URLSearchParams();
+      form.set('name', name);
+      try {
+        const resp = await fetch('{% url "create_category" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'X-CSRFToken': csrftoken,
+          },
+          body: form.toString(),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.ok) {
+          alert((data && data.error) ? data.error : 'Ошибка создания категории');
+          return;
+        }
+        // add option if missing
+        const exists = Array.from(categorySelect.options).some(o => String(o.value) === String(data.id));
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = data.id;
+          opt.textContent = data.name;
+          categorySelect.appendChild(opt);
+        }
+        // select and reload to load fields for this category
+        categorySelect.value = String(data.id);
+        categorySelect.dispatchEvent(new Event('change'));
+      } catch (e) {
+        alert('Ошибка сети при создании категории');
+      }
+    });
+  }
+
   // Динамическое добавление полей характеристик
   const addBtn = document.getElementById('addNewFieldBtn');
+  const addBottomBtn = document.getElementById('addNewFieldBottomBtn');
   const container = document.getElementById('newFieldsContainer');
   
   if (addBtn && container) {
-    const firstRow = container.querySelector('.new-field-row');
+    let lastFocusedRow = null;
+
+    function getTemplateRow() {
+      return container.querySelector('.new-field-row');
+    }
     
+    function setNewTemplateMode(row) {
+      const selectContainer = row.querySelector('.select-container');
+      const templateNameContainer = row.querySelector('.template-name-container');
+      const select = row.querySelector('.field-select');
+      const templateNameInput = row.querySelector('.new-template-name');
+      if (select) select.value = '__new__';
+      if (selectContainer) selectContainer.style.display = 'none';
+      if (templateNameContainer) templateNameContainer.style.display = 'block';
+      if (templateNameInput) templateNameInput.focus();
+    }
+
+    function isFirstRowNewTemplateSelected() {
+      const templateRow = getTemplateRow();
+      if (!templateRow) return false;
+      const firstSelect = templateRow.querySelector('.field-select');
+      return firstSelect && firstSelect.value === '__new__';
+    }
+
+    function focusFirstField(row) {
+      // Если в режиме "новый шаблон" — фокус на названии шаблона, иначе на select (шаблон)
+      const selectContainer = row.querySelector('.select-container');
+      const templateNameContainer = row.querySelector('.template-name-container');
+      const select = row.querySelector('.field-select');
+      const templateNameInput = row.querySelector('.new-template-name');
+
+      const isNewTemplate =
+        templateNameContainer &&
+        templateNameContainer.style.display !== 'none' &&
+        select &&
+        select.value === '__new__';
+
+      if (isNewTemplate && templateNameInput) {
+        templateNameInput.focus();
+        return;
+      }
+      if (selectContainer && selectContainer.style.display !== 'none' && select) {
+        select.focus();
+      }
+    }
+
     function createNewFieldRow() {
-      const newRow = firstRow.cloneNode(true);
+      const templateRow = getTemplateRow();
+      if (!templateRow) return null;
+      const newRow = templateRow.cloneNode(true);
       
       const select = newRow.querySelector('.field-select');
       const valueInput = newRow.querySelector('input[name="new_value[]"]');
@@ -240,15 +386,40 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const removeBtn = newRow.querySelector('.remove-field-btn');
       if (removeBtn) removeBtn.style.display = 'block';
+
+      // Если первая строка уже в режиме "новый шаблон" — каждая новая строка тоже стартует как "новый шаблон"
+      if (isFirstRowNewTemplateSelected()) {
+        // небольшой таймаут, чтобы focus сработал после вставки в DOM
+        setTimeout(() => setNewTemplateMode(newRow), 0);
+      }
       
       return newRow;
     }
     
     addBtn.addEventListener('click', function() {
       const newRow = createNewFieldRow();
-      container.appendChild(newRow);
+      if (!newRow) return;
+
+      // Верхняя кнопка тоже добавляет "сразу под тем местом, где сейчас вводим"
+      if (lastFocusedRow && container.contains(lastFocusedRow)) {
+        lastFocusedRow.insertAdjacentElement('afterend', newRow);
+      } else {
+        container.appendChild(newRow);
+      }
       updateRemoveButtons();
+      focusFirstField(newRow);
     });
+
+    // Нижняя кнопка: всегда добавляет в самый низ (под последнюю строку)
+    if (addBottomBtn) {
+      addBottomBtn.addEventListener('click', function() {
+        const newRow = createNewFieldRow();
+        if (!newRow) return;
+        container.appendChild(newRow);
+        updateRemoveButtons();
+        focusFirstField(newRow);
+      });
+    }
     
     container.addEventListener('click', function(e) {
       if (e.target.closest('.remove-field-btn')) {
@@ -289,11 +460,46 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
+
+    // Запоминаем текущую активную строку (чтобы верхняя кнопка добавляла "сразу под вводом")
+    container.addEventListener('focusin', function(e) {
+      const row = e.target.closest('.new-field-row');
+      if (row) lastFocusedRow = row;
+    });
+
+    // Enter в "Название шаблона" -> перейти к "Значение"
+    // Enter в "Значение" -> создать новую строку сразу ниже и поставить фокус
+    container.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+
+      const isTemplateName = e.target.classList && e.target.classList.contains('new-template-name');
+      const isValue = e.target.matches && e.target.matches('input[name="new_value[]"]');
+
+      if (!isTemplateName && !isValue) return;
+      e.preventDefault();
+
+      const row = e.target.closest('.new-field-row');
+      if (!row) return;
+
+      if (isTemplateName) {
+        const valueInput = row.querySelector('input[name="new_value[]"]');
+        if (valueInput) valueInput.focus();
+        return;
+      }
+
+      // isValue
+      const newRow = createNewFieldRow();
+      if (!newRow) return;
+      row.insertAdjacentElement('afterend', newRow);
+      updateRemoveButtons();
+      focusFirstField(newRow);
+    });
     
     function updateRemoveButtons() {
       const rows = container.querySelectorAll('.new-field-row');
       rows.forEach((row, index) => {
         const removeBtn = row.querySelector('.remove-field-btn');
+        if (!removeBtn) return;
         if (rows.length > 1) {
           removeBtn.style.display = 'block';
         } else {

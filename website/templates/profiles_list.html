@@ -77,6 +77,102 @@
     </div>
   </div>
 
+  <!-- Создание аккаунта -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h5 class="mb-1">
+            <i class="bi bi-person-plus me-2"></i>
+            Создать аккаунт
+          </h5>
+          <small class="text-muted">
+            VPN-ссылок (только для staff): <strong>{{ tailscale_remaining|default:0 }}</strong>
+          </small>
+        </div>
+
+        <form method="post" class="row g-2 align-items-center">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_account">
+          <div class="col-12 col-md-auto">
+            <input type="text" class="form-control form-control-sm" name="first_name" placeholder="Имя" style="min-width: 140px;">
+          </div>
+          <div class="col-12 col-md-auto">
+            <input type="text" class="form-control form-control-sm" name="last_name" placeholder="Фамилия" style="min-width: 160px;">
+          </div>
+          <div class="col-12 col-md-auto">
+            <select class="form-select form-select-sm" name="account_type" style="min-width: 220px;">
+              <option value="customer">Заказчик</option>
+              <option value="staff">Менеджер (staff)</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-plus-circle me-1"></i>
+            Создать
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {% if created_account_info %}
+        <hr class="my-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-9">
+            <div class="alert alert-success mb-0">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <div class="fw-bold mb-1">Аккаунт создан</div>
+                  <div class="small">
+                    <div><strong>Сайт:</strong> {{ created_account_info.site_url }}</div>
+                    <div><strong>Логин:</strong> <code>{{ created_account_info.username }}</code></div>
+                    <div><strong>Пароль:</strong> <code>{{ created_account_info.password }}</code></div>
+                    {% if created_account_info.first_name or created_account_info.last_name %}
+                      <div><strong>Имя:</strong> {{ created_account_info.first_name }} {{ created_account_info.last_name }}</div>
+                    {% endif %}
+                    {% if created_account_info.needs_vpn %}
+                      {% if created_account_info.invite_url %}
+                        <div class="mt-2">
+                          <strong>VPN (одноразовая ссылка):</strong>
+                          <code>{{ created_account_info.invite_url }}</code>
+                          <div class="text-muted">
+                            Ссылка одноразовая: после отправки человеку больше не работает.
+                          </div>
+                        </div>
+                      {% else %}
+                        <div class="mt-2 text-warning">
+                          <strong>VPN:</strong> ссылок не осталось — нужно обратиться к администратору.
+                        </div>
+                      {% endif %}
+                    {% endif %}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  id="copyCreatedAccountBtn"
+                  data-site-url="{{ created_account_info.site_url }}"
+                  data-username="{{ created_account_info.username }}"
+                  data-password="{{ created_account_info.password }}"
+                  data-invite-url="{{ created_account_info.invite_url|default:'' }}"
+                  data-needs-vpn="{% if created_account_info.needs_vpn %}1{% else %}0{% endif %}"
+                >
+                  <i class="bi bi-clipboard me-1"></i>
+                  Скопировать данные
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-3">
+            <div class="alert alert-light mb-0 small">
+              Текст в буфере: сайт + логин + пароль + VPN (если есть).
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
   <!-- Фильтры и поиск -->
   <div class="card mb-4">
     <div class="card-body">
@@ -167,6 +263,11 @@
                         {% if profile.user.first_name or profile.user.last_name %}
                           <br><small class="text-muted">{{ profile.user.first_name }} {{ profile.user.last_name }}</small>
                         {% endif %}
+                        <div class="mt-1">
+                          <a class="btn btn-link btn-sm p-0" href="{% url 'staff_profile' profile.user.id %}">
+                            Открыть профиль
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -281,5 +382,60 @@
     font-weight: 500;
   }
 </style>
+
+<script>
+  (function () {
+    const btn = document.getElementById('copyCreatedAccountBtn');
+    if (!btn) return;
+
+    function buildText() {
+      const siteUrl = btn.dataset.siteUrl || '';
+      const username = btn.dataset.username || '';
+      const password = btn.dataset.password || '';
+      const inviteUrl = btn.dataset.inviteUrl || '';
+      const needsVpn = (btn.dataset.needsVpn || '') === '1';
+      const lines = [];
+      if (siteUrl) lines.push(`Сайт: ${siteUrl}`);
+      if (username) lines.push(`Логин: ${username}`);
+      if (password) lines.push(`Пароль: ${password}`);
+      if (needsVpn) {
+        if (inviteUrl) {
+          lines.push(`VPN (одноразовая ссылка): ${inviteUrl}`);
+        } else {
+          lines.push('VPN: ссылок не осталось — нужно обратиться к администратору.');
+        }
+      }
+      return lines.join('\n');
+    }
+
+    btn.addEventListener('click', async function () {
+      const text = buildText();
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        btn.innerText = 'Скопировано';
+        setTimeout(() => {
+          btn.classList.remove('btn-success');
+          btn.classList.add('btn-outline-secondary');
+          btn.innerHTML = '<i class="bi bi-clipboard me-1"></i> Скопировать данные';
+        }, 1200);
+      } catch (e) {
+        alert('Не удалось скопировать. Скопируйте вручную.');
+      }
+    });
+  })();
+</script>
 {% endblock %}
 

@@ -9,6 +9,7 @@ from website.utils.ufaloft import (
     parse_dashboard,
     sync_by_index,
     DEFAULT_DASHBOARD_URL,
+    parse_workshop_price,
 )
 
 
@@ -39,7 +40,7 @@ class Command(BaseCommand):
             try:
                 idx = str(my_index).strip()
                 # Выбранное поле
-                field = options['index-field']
+                field = options['index_field']
                 q = {field: idx}
                 record = Record.objects.filter(**q).first()
                 # Fallback: попробовать другое поле, если не нашли
@@ -61,17 +62,11 @@ class Command(BaseCommand):
                 # Обновляем стоимость работы цеха
                 if workshop_price:
                     try:
-                        # Парсим цену, убираем лишние символы
-                        price_str = workshop_price.replace(' ', '').replace(',', '.')
-                        # Извлекаем только числа
-                        import re
-                        price_match = re.search(r'(\d+(?:\.\d+)?)', price_str)
-                        if price_match:
-                            new_price = float(price_match.group(1))
-                            if record.workshop_price != new_price:
-                                record.workshop_price = new_price
-                                changed = True
-                    except (ValueError, TypeError):
+                        new_price = parse_workshop_price(workshop_price)
+                        if new_price is not None and record.workshop_price != new_price:
+                            record.workshop_price = new_price
+                            changed = True
+                    except Exception:
                         if options['verbose']:
                             self.stdout.write(f"[WARNING] Не удалось распарсить цену цеха: {workshop_price}")
                 
