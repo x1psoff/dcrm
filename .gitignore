@@ -25,6 +25,13 @@ Thumbs.db
 db.sqlite3
 *.log
 
+# Backups / restic repository
+backups/
+
+# Reverse proxy (certs and dynamic config should live on disk, not in git)
+docker/certs/
+docker/traefik/dynamic/
+
 # Media: ignore all generated files, keep shipped templates
 media/*
 !media/templates/**

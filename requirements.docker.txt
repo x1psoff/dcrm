@@ -41,3 +41,4 @@ xlsxwriter==3.2.5
 yarl==1.20.1
 selenium==4.25.0
 webdriver-manager==4.0.2
+python-telegram-bot==21.7
