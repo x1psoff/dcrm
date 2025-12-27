@@ -32,6 +32,27 @@ DEBUG = _env_bool("DEBUG", True)
 
 ALLOWED_HOSTS = _env_csv("ALLOWED_HOSTS", ["*"])
 
+# CSRF / proxy (behind Traefik / HTTPS)
+# Example:
+#   CSRF_TRUSTED_ORIGINS=https://example.com,http://1.2.3.4:8088
+CSRF_TRUSTED_ORIGINS = _env_csv("CSRF_TRUSTED_ORIGINS", [])
+
+# If you terminate TLS at a reverse proxy and forward to Django via HTTP,
+# enable this so Django knows the original scheme was HTTPS.
+# (Traefik sets X-Forwarded-Proto by default.)
+SECURE_PROXY_SSL_HEADER = (
+    ("HTTP_X_FORWARDED_PROTO", "https") if _env_bool("SECURE_PROXY_SSL_HEADER", False) else None
+)
+USE_X_FORWARDED_HOST = _env_bool("USE_X_FORWARDED_HOST", False)
+
+# Cookies over HTTPS (optional hardening)
+CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", default=False)
+SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", default=False)
+
+# Workaround for some embedded browsers/webviews that send `Origin: null` on POST.
+# This is OFF by default because it weakens CSRF protections.
+CSRF_STRIP_NULL_ORIGIN = _env_bool("CSRF_STRIP_NULL_ORIGIN", default=False)
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -47,6 +68,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # Must be BEFORE CsrfViewMiddleware
+    'dcrm.middleware.StripNullOriginMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

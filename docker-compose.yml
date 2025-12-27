@@ -1,14 +1,128 @@
 services:
+  proxy:
+    image: traefik:v3.2
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # logging
+      - "--accesslog=true"
+      - "--accesslog.format=json"
+      - "--log.level=INFO"
+    ports:
+      - "${PROXY_HTTP_PUBLISH:-8088}:80"
+      - "${PROXY_HTTPS_PUBLISH:-443}:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./docker/certs:/certs:ro
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"  # Порт для доступа с других компьютеров
+      - "${DJANGO_PORT:-8000}:8000"  # Порт для доступа с других компьютеров
     volumes:
-      - .:/app
+      # Persist data on host (./* is /data/apps/dcrm/* on your server)
+      - ./db.sqlite3:/data/db.sqlite3
+      - ./media:/data/media
     environment:
-      - DEBUG=True
-    command: python manage.py runserver 0.0.0.0:8000
+      DEBUG: ${DEBUG:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DB_PATH: ${DB_PATH:-/data/db.sqlite3}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TZ: ${TZ:-UTC}
+      DJANGO_COLLECTSTATIC: ${DJANGO_COLLECTSTATIC:-0}
+      # CSRF / proxy settings (optional)
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      SECURE_PROXY_SSL_HEADER: ${SECURE_PROXY_SSL_HEADER:-0}
+      USE_X_FORWARDED_HOST: ${USE_X_FORWARDED_HOST:-0}
+      CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-0}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
+      # Workaround for some webviews that send Origin: null (OFF by default)
+      CSRF_STRIP_NULL_ORIGIN: ${CSRF_STRIP_NULL_ORIGIN:-0}
+    command: ["sh", "/app/docker/entrypoint.sh"]
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.web.entrypoints=web"
+      - "traefik.http.services.web.loadbalancer.server.port=8000"
+      - "traefik.http.routers.web-secure.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.web-secure.entrypoints=websecure"
+      - "traefik.http.routers.web-secure.tls=true"
+      # middlewares: gzip + security headers + rate limit
+      - "traefik.http.middlewares.web-compress.compress=true"
+      - "traefik.http.middlewares.web-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.web-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.web-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.web-headers.headers.referrerPolicy=no-referrer"
+      - "traefik.http.middlewares.web-ratelimit.ratelimit.average=${RATE_LIMIT_AVG:-20}"
+      - "traefik.http.middlewares.web-ratelimit.ratelimit.burst=${RATE_LIMIT_BURST:-40}"
+      - "traefik.http.routers.web.middlewares=web-compress@docker,web-headers@docker,web-ratelimit@docker"
+      - "traefik.http.routers.web-secure.middlewares=web-compress@docker,web-headers@docker,web-ratelimit@docker"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,urllib.error,sys; url='http://127.0.0.1:8000/';\ntry:\n  r=urllib.request.urlopen(url, timeout=2); sys.exit(0 if getattr(r,'status',200) < 500 else 1)\nexcept urllib.error.HTTPError as e:\n  sys.exit(0 if e.code < 500 else 1)\nexcept Exception:\n  sys.exit(1)\n",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["bot"]
+    volumes:
+      - ./db.sqlite3:/data/db.sqlite3
+      - ./media:/data/media
+    environment:
+      DEBUG: ${DEBUG:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DB_PATH: ${DB_PATH:-/data/db.sqlite3}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TZ: ${TZ:-UTC}
+    command: python manage.py run_telegram_bot
+    restart: unless-stopped
+    depends_on:
+      - web
+
+  backup:
+    image: dcrm-backup:latest
+    profiles: ["backup"]
+    # backup container reads db/media/.env from /data (read-only)
+    volumes:
+      - ./:/data:ro
+      # restic repository stored on disk under /data/apps/dcrm/backups
+      - ./backups:/restic
+    environment:
+      BACKUP_MODE: sqlite
+      BACKUP_SQLITE_PATH: /data/db.sqlite3
+      BACKUP_MEDIA_PATH: /data/media
+      BACKUP_ENV_PATH: /data/.env
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/restic/dcrm}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      BACKUP_PREFIX: dcrm
+      # Every 6 hours
+      BACKUP_CRON: "0 */6 * * *"
+      RUN_ON_STARTUP: "1"
+      RETENTION_KEEP_DAILY: "14"
+      RETENTION_KEEP_WEEKLY: "8"
+      RETENTION_KEEP_MONTHLY: "12"
     restart: unless-stopped
 
