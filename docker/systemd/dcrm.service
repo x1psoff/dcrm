@@ -1,0 +1,34 @@
+[Unit]
+Description=DCRM Django Application with Docker Compose
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/qwe/dcrm
+User=qwe
+Group=qwe
+TimeoutStopSec=90
+
+# Start all services including bot and backups
+ExecStart=/usr/bin/docker compose --profile bot --profile backup --profile backup_orders up -d
+
+# Stop all services
+ExecStop=/home/qwe/bin/stop_docker_safely.sh
+ExecStopPost=/usr/bin/sync
+
+# Reload on changes
+ExecReload=/usr/bin/docker compose --profile bot --profile backup --profile backup_orders up -d --build
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+# Environment
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target
+

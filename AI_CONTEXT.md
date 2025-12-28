@@ -58,9 +58,25 @@
 - `proxy`: Traefik
 - `selenium`: Selenium Chrome (опционально)
 - `ufaloft`: watcher (опционально)
-- `bot`: Telegram bot (опционально)
+- `bot`: Telegram bot (профиль `bot`)
 - `backup`: restic бэкап (профиль `backup`)
-- `backup_orders`: частые “версии” БД (профиль `backup_orders`)
+- `backup_orders`: частые "версии" БД (профиль `backup_orders`)
+
+### Автозапуск через systemd
+Для автоматического запуска всех сервисов при загрузке системы используется systemd служба:
+- Файл службы: `docker/systemd/dcrm.service`
+- Установка: `sudo ./docker/systemd/install.sh`
+- Удаление: `sudo ./docker/systemd/uninstall.sh`
+- Документация: `docker/systemd/README.md`
+
+Команды управления:
+```bash
+sudo systemctl start dcrm    # Запуск
+sudo systemctl stop dcrm     # Остановка
+sudo systemctl restart dcrm  # Перезапуск
+sudo systemctl status dcrm   # Статус
+sudo journalctl -u dcrm -f   # Логи
+```
 
 ### Важно про `/data`
 В контейнеры монтируются:

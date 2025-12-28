@@ -154,13 +154,13 @@
     {% endif %}
 
     <!-- Модальные окна для выплат -->
-    {% for payment_data in active_payments %}
+    {% for payment_data in all_payments %}
     <div class="modal fade" id="paymentModal{{ payment_data.payment.id }}" tabindex="-1" aria-labelledby="paymentModalLabel{{ payment_data.payment.id }}" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="paymentModalLabel{{ payment_data.payment.id }}">
-                        <i class="bi bi-cash-coin me-2"></i>Оплата выплаты
+                        <i class="bi bi-cash-coin me-2"></i>{% if payment_data.is_paid %}Оплаченная выплата{% else %}Оплата выплаты{% endif %}
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -177,6 +177,16 @@
                                     <span class="text-muted">Роль:</span>
                                     <span class="badge bg-info">{{ payment_data.role }}</span>
                                 </div>
+                                {% if payment_data.is_paid %}
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="text-muted">Статус:</span>
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Оплачено</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="text-muted">Дата оплаты:</span>
+                                    <span>{{ payment_data.paid_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                                {% endif %}
                                 <hr>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted fs-5">Сумма выплаты:</span>
@@ -218,7 +228,9 @@
                                         <th style="width: 120px;">Вычет</th>
                                         <th>Причина</th>
                                         <th style="width: 140px;">Дата</th>
+                                        {% if not payment_data.is_paid %}
                                         <th style="width: 80px;"></th>
+                                        {% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -227,6 +239,7 @@
                                         <td><strong class="text-danger">{{ d.amount|floatformat:2 }} ₽</strong></td>
                                         <td class="text-muted">{{ d.reason|default:"—" }}</td>
                                         <td><small class="text-muted">{{ d.created_at|date:"d.m.Y H:i" }}</small></td>
+                                        {% if not payment_data.is_paid %}
                                         <td class="text-end">
                                             <form method="post" action="{% url 'payments_page' %}" class="d-inline">
                                                 {% csrf_token %}
@@ -237,16 +250,18 @@
                                                 </button>
                                             </form>
                                         </td>
+                                        {% endif %}
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-2">Вычетов нет</td>
+                                        <td colspan="{% if not payment_data.is_paid %}4{% else %}3{% endif %}" class="text-center text-muted py-2">Вычетов нет</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
 
+                        {% if not payment_data.is_paid %}
                         <form method="post" action="{% url 'payments_page' %}" class="row g-2"
                               data-payment-id="{{ payment_data.payment.id }}"
                               data-base-amount="{{ payment_data.amount }}"
@@ -274,16 +289,19 @@
                                 </button>
                             </div>
                         </form>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    {% if not payment_data.is_paid %}
                     <form method="post" action="{% url 'mark_payment_paid' payment_data.payment.id %}" class="d-inline" id="paymentForm{{ payment_data.payment.id }}">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-success" onclick="return confirmPayment('{{ payment_data.worker.name }} {{ payment_data.worker.surname }}', '{{ payment_data.net_amount|floatformat:2 }}');">
                             <i class="bi bi-check-circle me-1"></i>Оплачено
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -387,17 +405,16 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                {% if not payment.is_paid %}
-                                                    <button type="button" class="btn btn-sm btn-outline-success"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#paymentModal{{ payment.payment.id }}"
-                                                            title="Отметить как оплачено">
-                                                        <i class="bi bi-check-circle"></i>
-                                                    </button>
-                                                {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-info"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#paymentModal{{ payment.payment.id }}"
+                                                        title="Просмотр подробностей">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </button>
+                                                {% if payment.is_paid %}
                                                     <form method="post" action="{% url 'mark_payment_unpaid' payment.payment.id %}" class="d-inline">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Отметить выплату как неоплаченную?');" title="Отметить как не оплачено">
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning ms-1" onclick="return confirm('Отметить выплату как неоплаченную?');" title="Отметить как не оплачено">
                                                             <i class="bi bi-x-circle"></i>
                                                         </button>
                                                     </form>
@@ -526,17 +543,16 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                {% if not record_data.is_paid %}
-                                                    <button type="button" class="btn btn-sm btn-outline-success" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#paymentModal{{ record_data.payment.id }}"
-                                                            title="Отметить как оплачено">
-                                                        <i class="bi bi-check-circle"></i>
-                                                    </button>
-                                                {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#paymentModal{{ record_data.payment.id }}"
+                                                        title="Просмотр подробностей">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </button>
+                                                {% if record_data.is_paid %}
                                                     <form method="post" action="{% url 'mark_payment_unpaid' record_data.payment.id %}" class="d-inline">
                                                         {% csrf_token %}
-                                                        <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Отметить выплату как неоплаченную?');" title="Отметить как не оплачено">
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning ms-1" onclick="return confirm('Отметить выплату как неоплаченную?');" title="Отметить как не оплачено">
                                                             <i class="bi bi-x-circle"></i>
                                                         </button>
                                                     </form>

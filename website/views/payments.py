@@ -265,12 +265,41 @@ def payments_page(request):
             'basis': basis,
             'role': payment.get_role_display(),
             'created_at': payment.created_at,
+            'is_paid': payment.is_paid,
+            'paid_at': payment.paid_at,
         })
     
     # Общая сумма активных выплат (net)
     total_active_payments = sum(p['net_amount'] for p in active_payments_data)
     total_active_payments_gross = sum(p['amount'] for p in active_payments_data)
     total_active_count = len(active_payments_data)
+    
+    # Получаем ВСЕ выплаты для модальных окон (включая оплаченные)
+    all_payments = WorkerPayment.objects.select_related(
+        'record', 'worker'
+    ).prefetch_related(
+        'deductions'
+    ).order_by('-created_at')
+    
+    # Формируем данные для ВСЕХ выплат (для модальных окон)
+    all_payments_data = []
+    for payment in all_payments:
+        summary = _payment_deductions_summary(payment)
+        basis = _get_payment_basis(payment.record, payment.worker, payment.role)
+        all_payments_data.append({
+            'payment': payment,
+            'record': payment.record,
+            'worker': payment.worker,
+            'amount': payment.amount,
+            'deductions': summary["deductions"],
+            'deductions_total': summary["deductions_total"],
+            'net_amount': summary["net_amount"],
+            'basis': basis,
+            'role': payment.get_role_display(),
+            'created_at': payment.created_at,
+            'is_paid': payment.is_paid,
+            'paid_at': payment.paid_at,
+        })
 
     # Группируем активные выплаты по заказам для аккордеона
     active_orders_map = {}
@@ -368,6 +397,7 @@ def payments_page(request):
         'orders_data': orders_data,
         'orders_count': len(orders_data),
         'total_orders_amount': total_orders_amount,
+        'all_payments': all_payments_data,  # Все выплаты для модальных окон
     })
 
 
