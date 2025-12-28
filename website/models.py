@@ -669,3 +669,40 @@ class WorkerPayment(models.Model):
     
     def __str__(self):
         return f"{self.worker.name} {self.worker.surname} - {self.get_role_display()} - {self.amount} ₽ ({'Оплачено' if self.is_paid else 'Не оплачено'})"
+
+
+class WorkerPaymentDeduction(models.Model):
+    """Санкционный вычет из конкретной выплаты работнику (по заказу и роли)."""
+
+    payment = models.ForeignKey(
+        WorkerPayment,
+        on_delete=models.CASCADE,
+        related_name="deductions",
+        verbose_name="Выплата",
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Вычет (₽)",
+    )
+    reason = models.CharField(
+        max_length=300,
+        blank=True,
+        default="",
+        verbose_name="Причина",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+
+    class Meta:
+        verbose_name = "Санкционный вычет"
+        verbose_name_plural = "Санкционные вычеты"
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["payment", "-created_at"], name="website_wor_payment_a1fe61_idx"),
+        ]
+
+    def __str__(self):
+        base = f"{self.amount} ₽"
+        if self.reason:
+            return f"{base} — {self.reason}"
+        return base

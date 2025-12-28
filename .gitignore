@@ -23,10 +23,14 @@ Thumbs.db
 
 # Django
 db.sqlite3
+db.sqlite3.*
 *.log
 
 # Backups / restic repository
 backups/
+
+# Local restore safety copies (not for git)
+media.before_restore.*/
 
 # Reverse proxy (certs and dynamic config should live on disk, not in git)
 docker/certs/

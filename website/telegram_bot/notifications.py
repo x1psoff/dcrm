@@ -144,3 +144,95 @@ def notify_workers_about_record(record, message_type='created'):
         except Exception as e:
             logger.error(f"Ошибка при отправке уведомления работнику {worker}: {e}", exc_info=True)
 
+
+def notify_worker_payment_paid(payment) -> bool:
+    """
+    Отправляет работнику уведомление о том, что его выплата по заказу отмечена как оплаченная.
+
+    Сообщение содержит:
+    - номер заказа / клиент
+    - роль
+    - начислено (gross)
+    - санкционные вычеты (с причинами)
+    - к выплате (net)
+    - краткое описание расчёта (процент/погонный/м²)
+    """
+    from decimal import Decimal
+    from website.models import Profile
+
+    if not payment:
+        return False
+
+    record = getattr(payment, "record", None)
+    worker = getattr(payment, "worker", None)
+    if not record or not worker:
+        return False
+
+    profile = Profile.objects.filter(
+        designer=worker,
+        telegram_verified=True,
+        telegram_id__isnull=False,
+    ).first()
+    if not (profile and profile.telegram_id):
+        logger.warning(
+            f"[tg] worker payment notify skipped: no verified telegram for worker={getattr(worker, 'id', None)}"
+        )
+        return False
+
+    # Deductions
+    deductions_qs = getattr(payment, "deductions", None)
+    deductions = list(deductions_qs.all()) if deductions_qs is not None else []
+    deductions_total = sum((d.amount for d in deductions), Decimal("0"))
+    gross = payment.amount or Decimal("0")
+    net = gross - deductions_total
+
+    # Basis (simplified, matches logic in payments)
+    method_name = (worker.method.name.lower() if getattr(worker, "method", None) else "").strip()
+    basis_text = "—"
+    try:
+        if ("процент" in method_name) and getattr(worker, "percentage", None) and getattr(record, "contract_amount", None):
+            basis_text = f"{worker.percentage}% от договора ({record.contract_amount} ₽)"
+        elif "погон" in method_name:
+            rate = Decimal(str(worker.rate_per_square_meter)) if getattr(worker, "rate_per_square_meter", None) else Decimal("0")
+            meters = Decimal("0")
+            if payment.role == "designer":
+                meters = Decimal(str(record.designer_manual_salary)) if record.designer_manual_salary is not None else Decimal("0")
+            elif payment.role == "designer_worker":
+                meters = Decimal(str(record.designer_worker_manual_salary)) if record.designer_worker_manual_salary is not None else Decimal("0")
+            elif payment.role == "assembler_worker":
+                meters = Decimal(str(record.assembler_worker_manual_salary)) if record.assembler_worker_manual_salary is not None else Decimal("0")
+            basis_text = f"{meters} м × {rate} ₽/м"
+        elif ("м²" in method_name or "метр" in method_name) and getattr(worker, "rate_per_square_meter", None):
+            # area is optional (depends on uploaded files); avoid heavy IO here
+            rate = Decimal(str(worker.rate_per_square_meter)) if worker.rate_per_square_meter else Decimal("0")
+            basis_text = f"м² × {rate} ₽/м²"
+    except Exception:
+        basis_text = "—"
+
+    role_display = payment.get_role_display() if hasattr(payment, "get_role_display") else str(payment.role)
+    client = f"{record.first_name} {record.last_name}".strip()
+
+    lines = [
+        "✅ **Выплата оплачена**",
+        "",
+        f"🧾 Заказ №{record.id} — {client}",
+        f"👔 Роль: **{role_display}**",
+        f"💵 Начислено: **{gross:.2f} ₽**",
+    ]
+    if deductions_total > 0:
+        lines.append(f"⚠️ Вычеты: **{deductions_total:.2f} ₽**")
+    lines.append(f"✅ К выплате: **{net:.2f} ₽**")
+    lines.append(f"📐 Расчет: {basis_text}")
+
+    if deductions_total > 0:
+        lines.append("")
+        lines.append("🧾 Причины вычетов:")
+        for d in deductions[:20]:
+            reason = (d.reason or "").strip() or "—"
+            lines.append(f"- {d.amount:.2f} ₽ — {reason}")
+        if len(deductions) > 20:
+            lines.append(f"... и еще {len(deductions) - 20}")
+
+    message = "\n".join(lines)
+    return send_telegram_notification(profile.telegram_id, message)
+

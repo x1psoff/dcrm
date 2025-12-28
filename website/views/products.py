@@ -331,6 +331,7 @@ def product_detail(request, pk):
         name = request.POST.get('name', '').strip()
         category_id = request.POST.get('category')
         our_price = request.POST.get('our_price', '').strip()
+        source_url = request.POST.get('source_url', '').strip()
         image = request.FILES.get('image')
         remove_image = request.POST.get('remove_image')
 
@@ -351,6 +352,11 @@ def product_detail(request, pk):
             except (InvalidOperation, ValueError):
                 messages.error(request, "Неверный формат цены")
                 return redirect('product_detail', pk=product.id)
+
+        # Ссылка (необязательно): можно очистить
+        if source_url and '://' not in source_url:
+            source_url = 'https://' + source_url
+        product.source_url = source_url
         
         # Изображение: обновляем если загружено новое
         if image:

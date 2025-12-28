@@ -6,15 +6,14 @@ from decimal import Decimal
 import requests
 from bs4 import BeautifulSoup
 import re
-from .models import Category, CategoryField, Product, ProductCustomField, CalculationMethod, Profession, Designer, Profile, WorkerPayment
+from .models import Category, CategoryField, Product, ProductCustomField, CalculationMethod, Profession, Designer, Profile, WorkerPayment, WorkerPaymentDeduction
 from django.urls import path
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 import logging
 from django.utils.safestring import mark_safe
 
-# Настройка логирования для отладки
-logging.basicConfig(level=logging.DEBUG)
+# Логирование (уровень задаётся настройками Django/окружением; не выставляем basicConfig глобально)
 logger = logging.getLogger(__name__)
 
 
@@ -441,3 +440,18 @@ class WorkerPaymentAdmin(admin.ModelAdmin):
         elif not obj.is_paid:
             obj.paid_at = None
         super().save_model(request, obj, form, change)
+
+
+@admin.register(WorkerPaymentDeduction)
+class WorkerPaymentDeductionAdmin(admin.ModelAdmin):
+    list_display = ["id", "payment", "amount", "reason", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = [
+        "reason",
+        "payment__worker__name",
+        "payment__worker__surname",
+        "payment__record__first_name",
+        "payment__record__last_name",
+        "payment__record__id",
+    ]
+    ordering = ["-created_at", "-id"]

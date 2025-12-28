@@ -25,6 +25,7 @@
 
 .product-card .card-header {
   background: #f8f9fa;
+  color: #111;
   border-bottom: 1px solid #dee2e6;
   padding: 1rem 1.25rem;
   font-weight: 600;
@@ -143,6 +144,12 @@
               <div class="mb-3">
                 <label class="form-label">Наша цена <span class="text-danger">*</span></label>
                 <input type="number" step="0.01" class="form-control" name="our_price" required placeholder="Введите цену">
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Ссылка (необязательно)</label>
+                <input type="url" class="form-control" name="source_url" placeholder="http://... или https://...">
+                <small class="text-muted">Например ссылка на товар в магазине/интернете</small>
               </div>
               
               <div class="mb-0">

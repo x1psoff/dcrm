@@ -273,6 +273,10 @@
                                             <span class="text-muted small">Погонные метры проектировщика:</span>
                                             <input type="number" step="0.01" name="designer_manual_salary" id="designer_manual_salary" 
                                                    class="form-control form-control-sm" value="{% if customer_record.designer_manual_salary is not None %}{{ customer_record.designer_manual_salary }}{% endif %}" min="0">
+                                            <span class="text-muted small" id="designer_manual_salary_preview"
+                                                  data-rate="{% if customer_record.designer.rate_per_square_meter is not None %}{{ customer_record.designer.rate_per_square_meter }}{% else %}0{% endif %}">
+                                                Итого: —
+                                            </span>
                                             <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
                                         </form>
                                     </div>
@@ -290,6 +294,10 @@
                                             <span class="text-muted small">Погонные метры дизайнера:</span>
                                             <input type="number" step="0.01" name="designer_worker_manual_salary" id="designer_worker_manual_salary" 
                                                    class="form-control form-control-sm" value="{% if customer_record.designer_worker_manual_salary is not None %}{{ customer_record.designer_worker_manual_salary }}{% endif %}" min="0">
+                                            <span class="text-muted small" id="designer_worker_manual_salary_preview"
+                                                  data-rate="{% if customer_record.designer_worker.rate_per_square_meter is not None %}{{ customer_record.designer_worker.rate_per_square_meter }}{% else %}0{% endif %}">
+                                                Итого: —
+                                            </span>
                                             <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
                                         </form>
                                     </div>
@@ -307,6 +315,10 @@
                                             <span class="text-muted small">Погонные метры сборщика:</span>
                                             <input type="number" step="0.01" name="assembler_worker_manual_salary" id="assembler_worker_manual_salary" 
                                                    class="form-control form-control-sm" value="{% if customer_record.assembler_worker_manual_salary is not None %}{{ customer_record.assembler_worker_manual_salary }}{% endif %}" min="0">
+                                            <span class="text-muted small" id="assembler_worker_manual_salary_preview"
+                                                  data-rate="{% if customer_record.assembler_worker.rate_per_square_meter is not None %}{{ customer_record.assembler_worker.rate_per_square_meter }}{% else %}0{% endif %}">
+                                                Итого: —
+                                            </span>
                                             <button type="submit" class="btn btn-sm btn-outline-primary">Сохранить</button>
                                         </form>
                                     </div>
@@ -314,7 +326,7 @@
                                 {% endif %}
                             {% endif %}
                         {% endif %}
-                        {% if show_designer_worker_salary and designer_worker_salary > 0 %}
+                        {% if show_designer_worker_salary %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between">
                                 <span class="text-muted">Дизайнер{% if designer_worker_info %} ({{ designer_worker_info }}){% endif %}</span>
@@ -322,7 +334,7 @@
                             </div>
                         </div>
                         {% endif %}
-                        {% if show_assembler_worker_salary and assembler_worker_salary > 0 %}
+                        {% if show_assembler_worker_salary %}
                         <div class="col-12">
                             <div class="d-flex justify-content-between">
                                 <span class="text-muted">Сборщик{% if assembler_worker_info %} ({{ assembler_worker_info }}){% endif %}</span>
@@ -905,4 +917,45 @@
         }
     }
 </style>
+
+<script>
+  (function () {
+    function fmtMoney(n) {
+      try {
+        return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (e) {
+        return String(n);
+      }
+    }
+    function fmtMeters(n) {
+      try {
+        return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      } catch (e) {
+        return String(n);
+      }
+    }
+    function setup(inputId, previewId) {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+
+      const rate = parseFloat(preview.dataset.rate || '0') || 0;
+      const update = () => {
+        const meters = parseFloat(input.value || '0') || 0;
+        if (!rate) {
+          preview.textContent = 'Итого: ставка не указана';
+          return;
+        }
+        const total = rate * meters;
+        preview.textContent = `Итого: ${fmtMoney(rate)} ₽/м × ${fmtMeters(meters)} м = ${fmtMoney(total)} ₽`;
+      };
+      input.addEventListener('input', update);
+      update();
+    }
+
+    setup('designer_manual_salary', 'designer_manual_salary_preview');
+    setup('designer_worker_manual_salary', 'designer_worker_manual_salary_preview');
+    setup('assembler_worker_manual_salary', 'assembler_worker_manual_salary_preview');
+  })();
+</script>
 {% endblock %}

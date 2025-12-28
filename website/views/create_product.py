@@ -17,6 +17,7 @@ def create_product(request):
         name = request.POST.get('name', '').strip()
         category_id = request.POST.get('category')
         our_price = request.POST.get('our_price', '').strip()
+        source_url = request.POST.get('source_url', '').strip()
         image = request.FILES.get('image')
         
         # Валидация
@@ -34,8 +35,12 @@ def create_product(request):
             messages.error(request, 'Неверный формат цены')
             return redirect('create_product')
         
+        # Нормализация ссылки (необязательно)
+        if source_url and '://' not in source_url:
+            source_url = 'https://' + source_url
+
         # Создаем продукт
-        product = Product(name=name, our_price=our_price)
+        product = Product(name=name, our_price=our_price, source_url=source_url)
         
         # Изображение
         if image:

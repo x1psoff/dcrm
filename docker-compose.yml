@@ -129,12 +129,47 @@ services:
       RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/restic/dcrm}
       RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
       BACKUP_PREFIX: dcrm
-      # Every 6 hours
-      BACKUP_CRON: "0 */6 * * *"
+      # Daily end-of-day backup (incremental, restic-dedup).
+      # Weekly/monthly "full" restore points are achieved via retention policy.
+      BACKUP_CRON: "${BACKUP_CRON:-5 23 * * *}"
       RUN_ON_STARTUP: "1"
-      RETENTION_KEEP_DAILY: "14"
-      RETENTION_KEEP_WEEKLY: "8"
-      RETENTION_KEEP_MONTHLY: "12"
+      # Retention policy (tune as needed):
+      # - keep daily for ~1 month
+      # - keep weekly for ~3 months
+      # - keep monthly for 5 years (law/compliance)
+      RETENTION_KEEP_DAILY: "${RETENTION_KEEP_DAILY:-30}"
+      RETENTION_KEEP_WEEKLY: "${RETENTION_KEEP_WEEKLY:-12}"
+      RETENTION_KEEP_MONTHLY: "${RETENTION_KEEP_MONTHLY:-60}"
+      # Optional: weekly restore integrity check (restores latest snapshot into tmp and checks sqlite integrity)
+      ENABLE_RESTORE_CHECK: "${ENABLE_RESTORE_CHECK:-1}"
+      RESTORE_CHECK_CRON: "${RESTORE_CHECK_CRON:-0 3 * * 0}"
+    restart: unless-stopped
+
+  # Optional: high-frequency "near-real-time" backups (e.g., every 15 minutes)
+  # stored in a separate restic repository, so retention differs from long-term archives.
+  backup_orders:
+    image: dcrm-backup:latest
+    profiles: ["backup_orders"]
+    volumes:
+      - ./:/data:ro
+      - ./backups:/restic
+      # Override backup script for high-frequency DB-only backups (atomic sqlite .backup + restic --stdin)
+      - ./docker/backup/run_backup_sqlite_orders.sh:/backup/run_backup_sqlite.sh:ro
+    environment:
+      BACKUP_MODE: sqlite
+      BACKUP_SQLITE_PATH: /data/db.sqlite3
+      BACKUP_MEDIA_PATH: /data/media
+      BACKUP_ENV_PATH: /data/.env
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY_ORDERS:-/restic/dcrm_orders}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      BACKUP_PREFIX: dcrm_orders
+      BACKUP_CRON: "${BACKUP_CRON_ORDERS:-*/15 * * * *}"
+      RUN_ON_STARTUP: "1"
+      # Keep last N snapshots (good for "каждый заказ = версия" when you backup often)
+      RETENTION_KEEP_LAST: "${RETENTION_KEEP_LAST_ORDERS:-2000}"
+      # Run prune at most once per 60 minutes (restic prune can be heavy)
+      PRUNE_INTERVAL_MIN: "${PRUNE_INTERVAL_MIN_ORDERS:-60}"
+      ENABLE_RESTORE_CHECK: "0"
     restart: unless-stopped
 
   # Optional: interactive browser on server via noVNC (open from Windows),
