@@ -333,13 +333,6 @@ def record_detail(request, pk):
                 designer_worker_info = f"{dw.name} {dw.surname} — {dw.percentage}% от договора"
             except Exception:
                 designer_worker_salary = 0
-        elif ('м²' in method_name or 'метр' in method_name or (not dw.method and dw.rate_per_square_meter)) and dw.rate_per_square_meter:
-            try:
-                sum_area = get_record_files_area(customer_record)
-                designer_worker_salary = (dw.rate_per_square_meter or 0) * sum_area
-                designer_worker_info = f"{dw.name} {dw.surname} — {dw.rate_per_square_meter} ₽/м² ({sum_area:.2f} м²)"
-            except Exception:
-                designer_worker_salary = 0
         elif 'погон' in method_name and customer_record.designer_worker_manual_salary is not None:
             try:
                 meters = Decimal(str(customer_record.designer_worker_manual_salary))
@@ -348,6 +341,13 @@ def record_detail(request, pk):
             rate = dw.rate_per_square_meter or Decimal('0')
             designer_worker_salary = rate * meters
             designer_worker_info = f"{dw.name} {dw.surname} — {rate} ₽/м × {meters} м"
+        elif ('м²' in method_name or 'метр' in method_name or (not dw.method and dw.rate_per_square_meter)) and dw.rate_per_square_meter:
+            try:
+                sum_area = get_record_files_area(customer_record)
+                designer_worker_salary = (dw.rate_per_square_meter or 0) * sum_area
+                designer_worker_info = f"{dw.name} {dw.surname} — {dw.rate_per_square_meter} ₽/м² ({sum_area:.2f} м²)"
+            except Exception:
+                designer_worker_salary = 0
 
     # Расчет зарплаты сборщика
     assembler_worker_salary = 0
@@ -362,13 +362,6 @@ def record_detail(request, pk):
                 assembler_worker_info = f"{aw.name} {aw.surname} — {aw.percentage}% от договора"
             except Exception:
                 assembler_worker_salary = 0
-        elif ('м²' in method_name or 'метр' in method_name or (not aw.method and aw.rate_per_square_meter)) and aw.rate_per_square_meter:
-            try:
-                sum_area = get_record_files_area(customer_record)
-                assembler_worker_salary = (aw.rate_per_square_meter or 0) * sum_area
-                assembler_worker_info = f"{aw.name} {aw.surname} — {aw.rate_per_square_meter} ₽/м² ({sum_area:.2f} м²)"
-            except Exception:
-                assembler_worker_salary = 0
         elif 'погон' in method_name and customer_record.assembler_worker_manual_salary is not None:
             try:
                 meters = Decimal(str(customer_record.assembler_worker_manual_salary))
@@ -377,6 +370,13 @@ def record_detail(request, pk):
             rate = aw.rate_per_square_meter or Decimal('0')
             assembler_worker_salary = rate * meters
             assembler_worker_info = f"{aw.name} {aw.surname} — {rate} ₽/м × {meters} м"
+        elif ('м²' in method_name or 'метр' in method_name or (not aw.method and aw.rate_per_square_meter)) and aw.rate_per_square_meter:
+            try:
+                sum_area = get_record_files_area(customer_record)
+                assembler_worker_salary = (aw.rate_per_square_meter or 0) * sum_area
+                assembler_worker_info = f"{aw.name} {aw.surname} — {aw.rate_per_square_meter} ₽/м² ({sum_area:.2f} м²)"
+            except Exception:
+                assembler_worker_salary = 0
 
     # Дополнительные расходы
     delivery_price_dec = Decimal(str(customer_record.delivery_price)) if customer_record.delivery_price else Decimal('0')

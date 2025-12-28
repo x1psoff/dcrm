@@ -33,6 +33,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Hide sensitive data: third-party libs may log full URLs (including bot token) at INFO/DEBUG.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.INFO)
+logging.getLogger("telegram.ext").setLevel(logging.INFO)
+
 
 def create_bot():
     """Создает и настраивает экземпляр бота"""

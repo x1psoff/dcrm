@@ -2,6 +2,7 @@ import json
 import os
 import re
 import urllib3
+from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Dict
 
@@ -11,7 +12,9 @@ from bs4 import BeautifulSoup
 
 DEFAULT_LOGIN_URL = 'https://lk.ufaloft.ru/index.php?module=dashboard/'
 DEFAULT_DASHBOARD_URL = 'https://lk.ufaloft.ru/index.php?module=dashboard/'
-COOKIES_PATH = os.path.join('media', 'ufaloft_cookies.json')
+# Store cookies next to uploaded media (persisted volume in Docker).
+# If MEDIA_ROOT is not set, fall back to local ./media directory.
+COOKIES_PATH = os.path.join(os.environ.get('MEDIA_ROOT') or 'media', 'ufaloft_cookies.json')
 
 
 @dataclass
@@ -45,7 +48,8 @@ def _resolve_verify_param():
 
 
 def ensure_media_dir() -> None:
-    os.makedirs('media', exist_ok=True)
+    base = os.environ.get('MEDIA_ROOT') or 'media'
+    os.makedirs(base, exist_ok=True)
 
 
 def save_cookies(session: requests.Session, path: str = COOKIES_PATH) -> None:
@@ -224,5 +228,23 @@ def sync_by_index(update_func, items: List[DashboardItem]) -> int:
         if ok:
             updated += 1
     return updated
+
+
+def parse_workshop_price(text: str) -> Optional[Decimal]:
+    """Parse workshop price text into Decimal with 2 decimal places.
+    Returns None if price cannot be parsed.
+    """
+    if not text:
+        return None
+    try:
+        s = (text or "").strip().replace(" ", "").replace(",", ".")
+        m = re.search(r"(\d+(?:\.\d+)?)", s)
+        if not m:
+            return None
+        val = Decimal(m.group(1))
+        # normalize to 2 decimal places like model field
+        return val.quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        return None
 
 

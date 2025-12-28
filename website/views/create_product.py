@@ -2,6 +2,8 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from decimal import Decimal, InvalidOperation
 from ..models import Product, Category, ProductCustomField, CategoryField
 
@@ -15,6 +17,7 @@ def create_product(request):
         name = request.POST.get('name', '').strip()
         category_id = request.POST.get('category')
         our_price = request.POST.get('our_price', '').strip()
+        source_url = request.POST.get('source_url', '').strip()
         image = request.FILES.get('image')
         
         # Валидация
@@ -32,8 +35,12 @@ def create_product(request):
             messages.error(request, 'Неверный формат цены')
             return redirect('create_product')
         
+        # Нормализация ссылки (необязательно)
+        if source_url and '://' not in source_url:
+            source_url = 'https://' + source_url
+
         # Создаем продукт
-        product = Product(name=name, our_price=our_price)
+        product = Product(name=name, our_price=our_price, source_url=source_url)
         
         # Изображение
         if image:
@@ -118,4 +125,21 @@ def create_product(request):
         'selected_category': selected_category,
         'available_fields': available_fields,
     })
+
+
+@login_required
+@require_POST
+def create_category(request):
+    """Create a new product Category from UI (AJAX)."""
+    name = (request.POST.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'ok': False, 'error': 'Название категории обязательно'}, status=400)
+
+    # Deduplicate by case-insensitive match
+    existing = Category.objects.filter(name__iexact=name).first()
+    if existing:
+        return JsonResponse({'ok': True, 'id': existing.id, 'name': existing.name, 'created': False})
+
+    category = Category.objects.create(name=name)
+    return JsonResponse({'ok': True, 'id': category.id, 'name': category.name, 'created': True})
 

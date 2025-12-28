@@ -6,15 +6,14 @@ from decimal import Decimal
 import requests
 from bs4 import BeautifulSoup
 import re
-from .models import Category, CategoryField, Product, ProductCustomField, CalculationMethod, Profession, Designer, Profile, WorkerPayment
+from .models import Category, CategoryField, Product, ProductCustomField, CalculationMethod, Profession, Designer, Profile, WorkerPayment, WorkerPaymentDeduction
 from django.urls import path
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 import logging
 from django.utils.safestring import mark_safe
 
-# Настройка логирования для отладки
-logging.basicConfig(level=logging.DEBUG)
+# Логирование (уровень задаётся настройками Django/окружением; не выставляем basicConfig глобально)
 logger = logging.getLogger(__name__)
 
 
@@ -95,25 +94,12 @@ class CategoryFieldInline(admin.TabularInline):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'fields_count']
     search_fields = ['name']
-    inlines = [CategoryFieldInline]
+    # В админке не показываем "поля категорий" (шаблоны характеристик) — управляется из UI
+    inlines = []
     
     fieldsets = (
         ('Название категории', {
             'fields': ('name',),
-        }),
-        ('Шаблоны характеристик', {
-            'fields': (),
-            'description': mark_safe('''
-                <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-                    <strong>Создайте шаблоны характеристик для этой категории.</strong><br>
-                    Эти шаблоны будут доступны для выбора при добавлении индивидуальных характеристик к элементам этой категории.<br><br>
-                    <strong>Как создать шаблон:</strong><br>
-                    1. Нажмите "Добавить еще одну Характеристика" ниже<br>
-                    2. Укажите название (например: "Угол открывания", "Тип ответки")<br>
-                    3. Выберите тип поля (Текст, Число или Выбор из списка)<br>
-                    4. Сохраните категорию
-                </div>
-            '''),
         }),
     )
     
@@ -416,7 +402,7 @@ ProductAdmin.actions = [parse_selected_prices]
 
 # Регистрируем модели
 admin.site.register(Category, CategoryAdmin)
-admin.site.register(CategoryField)
+# CategoryField (поля категорий) скрываем из админки
 admin.site.register(CalculationMethod, CalculationMethodAdmin)
 admin.site.register(Profession, ProfessionAdmin)
 admin.site.register(Designer, DesignerAdmin)
@@ -454,3 +440,18 @@ class WorkerPaymentAdmin(admin.ModelAdmin):
         elif not obj.is_paid:
             obj.paid_at = None
         super().save_model(request, obj, form, change)
+
+
+@admin.register(WorkerPaymentDeduction)
+class WorkerPaymentDeductionAdmin(admin.ModelAdmin):
+    list_display = ["id", "payment", "amount", "reason", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = [
+        "reason",
+        "payment__worker__name",
+        "payment__worker__surname",
+        "payment__record__first_name",
+        "payment__record__last_name",
+        "payment__record__id",
+    ]
+    ordering = ["-created_at", "-id"]

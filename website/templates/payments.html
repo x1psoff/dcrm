@@ -38,6 +38,9 @@
                         <h6 class="text-muted mb-1">Активные выплаты</h6>
                         <h4 class="mb-0">{{ active_payments_count }}</h4>
                         <small class="text-muted">{{ total_active_payments|floatformat:2 }} ₽</small>
+                        {% if total_active_payments_gross and total_active_payments_gross != total_active_payments %}
+                            <br><small class="text-muted">До вычетов: {{ total_active_payments_gross|floatformat:2 }} ₽</small>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -72,6 +75,9 @@
                                 </div>
                                 <div class="text-end">
                                     <div class="fw-semibold text-danger">{{ order.total_amount|floatformat:2 }} ₽</div>
+                                    {% if order.deductions_total and order.deductions_total > 0 %}
+                                        <small class="text-muted">До вычетов: {{ order.total_amount_gross|floatformat:2 }} ₽</small>
+                                    {% endif %}
                                     <small class="text-muted">{{ order.payments|length }} выплат{{ order.payments|length|pluralize:",а,ы" }}</small>
                                 </div>
                             </div>
@@ -95,7 +101,13 @@
                                         {% for payment_data in order.payments %}
                                         <tr class="active-payment-row">
                                             <td><span class="badge bg-info">{{ payment_data.role }}</span></td>
-                                            <td><strong class="text-danger">{{ payment_data.amount|floatformat:2 }} ₽</strong></td>
+                                            <td>
+                                                <strong class="text-danger">{{ payment_data.amount|floatformat:2 }} ₽</strong>
+                                                {% if payment_data.deductions_total and payment_data.deductions_total > 0 %}
+                                                    <br><small class="text-muted">К выплате: {{ payment_data.net_amount|floatformat:2 }} ₽</small>
+                                                {% endif %}
+                                                <br><small class="text-muted">{{ payment_data.basis.text }}</small>
+                                            </td>
                                             <td><small class="text-muted">{{ payment_data.created_at|date:"d.m.Y H:i" }}</small></td>
                                             <td>
                                                 <button type="button" class="btn btn-sm btn-outline-success" 
@@ -118,7 +130,12 @@
                                     <tfoot class="table-light">
                                         <tr>
                                             <td class="text-end"><strong>Итого:</strong></td>
-                                            <td><strong class="text-danger">{{ order.total_amount|floatformat:2 }} ₽</strong></td>
+                                            <td>
+                                                <strong class="text-danger">{{ order.total_amount|floatformat:2 }} ₽</strong>
+                                                {% if order.deductions_total and order.deductions_total > 0 %}
+                                                    <br><small class="text-muted">До вычетов: {{ order.total_amount_gross|floatformat:2 }} ₽</small>
+                                                {% endif %}
+                                            </td>
                                             <td colspan="2"></td>
                                         </tr>
                                     </tfoot>
@@ -163,17 +180,107 @@
                                 <hr>
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted fs-5">Сумма выплаты:</span>
-                                    <strong class="text-success fs-4">{{ payment_data.amount|floatformat:2 }} ₽</strong>
+                                    <div class="text-end">
+                                        <div>
+                                            <small class="text-dark">{{ payment_data.amount|floatformat:2 }} ₽</small>
+                                        </div>
+                                        {% if payment_data.deductions_total and payment_data.deductions_total > 0 %}
+                                            <div><small class="text-muted">Вычеты: {{ payment_data.deductions_total|floatformat:2 }} ₽</small></div>
+                                            <div>
+                                                <small class="text-muted">К выплате:</small>
+                                                <strong class="text-success fs-4 ms-1">{{ payment_data.net_amount|floatformat:2 }} ₽</strong>
+                                            </div>
+                                        {% else %}
+                                            <div>
+                                                <small class="text-muted">К выплате:</small>
+                                                <strong class="text-success fs-4 ms-1">{{ payment_data.net_amount|floatformat:2 }} ₽</strong>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <span class="text-muted">Расчет:</span>
+                                    <small class="text-muted text-end">{{ payment_data.basis.text }}</small>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Санкционные вычеты -->
+                    <div class="mt-3">
+                        <h6 class="mb-2 fw-normal">
+                            <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Санкционный вычет
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-2">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 120px;">Вычет</th>
+                                        <th>Причина</th>
+                                        <th style="width: 140px;">Дата</th>
+                                        <th style="width: 80px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for d in payment_data.deductions %}
+                                    <tr>
+                                        <td><strong class="text-danger">{{ d.amount|floatformat:2 }} ₽</strong></td>
+                                        <td class="text-muted">{{ d.reason|default:"—" }}</td>
+                                        <td><small class="text-muted">{{ d.created_at|date:"d.m.Y H:i" }}</small></td>
+                                        <td class="text-end">
+                                            <form method="post" action="{% url 'payments_page' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_deduction">
+                                                <input type="hidden" name="deduction_id" value="{{ d.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить вычет?');" title="Удалить вычет">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-2">Вычетов нет</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <form method="post" action="{% url 'payments_page' %}" class="row g-2"
+                              data-payment-id="{{ payment_data.payment.id }}"
+                              data-base-amount="{{ payment_data.amount }}"
+                              data-existing-deductions="{{ payment_data.deductions_total|default_if_none:'0' }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_deduction">
+                            <input type="hidden" name="payment_id" value="{{ payment_data.payment.id }}">
+                            <div class="col-4">
+                                <input type="number" step="0.01" min="0" class="form-control"
+                                       name="deduction_amount"
+                                       placeholder="Вычет, ₽"
+                                       oninput="recalcNet({{ payment_data.payment.id }});">
+                            </div>
+                            <div class="col-8">
+                                <input type="text" class="form-control" name="deduction_reason" placeholder="Причина (необязательно)"
+                                       oninput="recalcNet({{ payment_data.payment.id }});">
+                            </div>
+                            <div class="col-12 d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    К выплате сейчас:
+                                    <strong id="netNow{{ payment_data.payment.id }}">{{ payment_data.net_amount|floatformat:2 }} ₽</strong>
+                                </small>
+                                <button type="submit" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-plus-circle me-1"></i>Добавить вычет
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
                     <form method="post" action="{% url 'mark_payment_paid' payment_data.payment.id %}" class="d-inline" id="paymentForm{{ payment_data.payment.id }}">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-success" onclick="return confirmPayment('{{ payment_data.worker.name }} {{ payment_data.worker.surname }}', '{{ payment_data.amount|floatformat:2 }}');">
+                        <button type="submit" class="btn btn-success" onclick="return confirmPayment('{{ payment_data.worker.name }} {{ payment_data.worker.surname }}', '{{ payment_data.net_amount|floatformat:2 }}');">
                             <i class="bi bi-check-circle me-1"></i>Оплачено
                         </button>
                     </form>
@@ -218,6 +325,9 @@
                                     <small class="text-muted">
                                         Не оплачено: {{ order.unpaid_amount|floatformat:2 }} ₽
                                     </small>
+                                    {% if order.deductions_total and order.deductions_total > 0 %}
+                                        <div><small class="text-muted">До вычетов: {{ order.total_amount_gross|floatformat:2 }} ₽</small></div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </button>
@@ -248,7 +358,13 @@
                                                 {% endif %}
                                             </td>
                                             <td><span class="badge bg-info">{{ payment.role }}</span></td>
-                                            <td><strong class="text-success">{{ payment.amount|floatformat:2 }} ₽</strong></td>
+                                            <td>
+                                                <strong class="text-success">{{ payment.amount|floatformat:2 }} ₽</strong>
+                                                {% if payment.deductions_total and payment.deductions_total > 0 %}
+                                                    <br><small class="text-muted">К выплате: {{ payment.net_amount|floatformat:2 }} ₽</small>
+                                                {% endif %}
+                                                <br><small class="text-muted">{{ payment.basis.text }}</small>
+                                            </td>
                                             <td>
                                                 {% if payment.is_paid %}
                                                     <span class="badge bg-success">
@@ -385,6 +501,7 @@
                                             </td>
                                             <td>
                                                 <strong class="text-success">{{ record_data.salary|floatformat:2 }} ₽</strong>
+                                                <br><small class="text-muted">{{ record_data.basis.text }}</small>
                                             </td>
                                             <td>
                                                 {% if record_data.is_paid %}
@@ -459,57 +576,6 @@
             {% endfor %}
         </div>
     </div>
-
-    <!-- Модальные окна для выплат в детализации работников -->
-    {% for worker_data in workers_data %}
-        {% for record_data in worker_data.records %}
-            {% if not record_data.is_paid %}
-            <div class="modal fade" id="paymentModal{{ record_data.payment.id }}" tabindex="-1" aria-labelledby="paymentModalLabel{{ record_data.payment.id }}" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="paymentModalLabel{{ record_data.payment.id }}">
-                                <i class="bi bi-cash-coin me-2"></i>Оплата выплаты
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="card border-0 bg-light">
-                                <div class="card-body">
-                                    <h6 class="card-title mb-3">Информация о выплате</h6>
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <span class="text-muted">Работник:</span>
-                                            <strong>{{ worker_data.worker.name }} {{ worker_data.worker.surname }}</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <span class="text-muted">Роль:</span>
-                                            <span class="badge bg-info">{{ record_data.role }}</span>
-                                        </div>
-                                        <hr>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="text-muted fs-5">Сумма выплаты:</span>
-                                            <strong class="text-success fs-4">{{ record_data.salary|floatformat:2 }} ₽</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                            <form method="post" action="{% url 'mark_payment_paid' record_data.payment.id %}" class="d-inline" id="paymentForm{{ record_data.payment.id }}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-success" onclick="return confirmPayment('{{ worker_data.worker.name }} {{ worker_data.worker.surname }}', '{{ record_data.salary|floatformat:2 }}');">
-                                    <i class="bi bi-check-circle me-1"></i>Оплачено
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        {% endfor %}
-    {% endfor %}
 </div>
 
 <style>
@@ -616,6 +682,18 @@ function setupShowMore({ itemsSelector, containerId, batchSize, buttonText, coll
 
 function confirmPayment(workerName, amount) {
     return confirm(`Подтвердите оплату выплаты:\n\nРаботник: ${workerName}\nСумма: ${amount} ₽\n\nОтметить выплату как оплаченную?`);
+}
+
+function recalcNet(paymentId) {
+    const form = document.querySelector(`form[data-payment-id="${paymentId}"]`);
+    if (!form) return;
+    const base = parseFloat(form.dataset.baseAmount || '0') || 0;
+    const existing = parseFloat(form.dataset.existingDeductions || '0') || 0;
+    const input = form.querySelector('input[name="deduction_amount"]');
+    const add = parseFloat((input && input.value) ? input.value : '0') || 0;
+    const net = Math.max(0, base - existing - add);
+    const el = document.getElementById(`netNow${paymentId}`);
+    if (el) el.textContent = `${net.toFixed(2)} ₽`;
 }
 
 // Сортировка по статусу оплаты

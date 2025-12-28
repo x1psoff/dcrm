@@ -130,6 +130,7 @@
                             Погонные метры проектировщика
                         </label>
                         {{ form.designer_manual_salary }}
+                        <div class="form-text text-muted" id="designer_manual_salary_preview">Итого: —</div>
                     </div>
                     <div class="col-md-4">
                         <label for="id_designer_worker_manual_salary" class="form-label">
@@ -137,6 +138,7 @@
                             Погонные метры дизайнера
                         </label>
                         {{ form.designer_worker_manual_salary }}
+                        <div class="form-text text-muted" id="designer_worker_manual_salary_preview">Итого: —</div>
                     </div>
                     <div class="col-md-4">
                         <label for="id_assembler_worker_manual_salary" class="form-label">
@@ -144,6 +146,7 @@
                             Погонные метры сборщика
                         </label>
                         {{ form.assembler_worker_manual_salary }}
+                        <div class="form-text text-muted" id="assembler_worker_manual_salary_preview">Итого: —</div>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -181,6 +184,28 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endfor %}
     };
 
+    // Ставка (₽/м) для погонных метров (используем rate_per_square_meter как ₽/м для "погон")
+    const workerRates = {
+        {% for worker in all_workers %}
+            {{ worker.id }}: "{% if worker.rate_per_square_meter is not None %}{{ worker.rate_per_square_meter }}{% else %}0{% endif %}",
+        {% endfor %}
+    };
+
+    function fmtMoney(n) {
+        try {
+            return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } catch (e) {
+            return String(n);
+        }
+    }
+    function fmtMeters(n) {
+        try {
+            return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        } catch (e) {
+            return String(n);
+        }
+    }
+
     // Функция для обновления бейджа способа зарплаты
     function updateMethodBadge(selectId, badgeId) {
         const select = document.getElementById(selectId);
@@ -197,23 +222,73 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function updateMetersPreview(workerSelectId, metersInputId, previewId) {
+        const workerSelect = document.getElementById(workerSelectId);
+        const metersInput = document.getElementById(metersInputId);
+        const preview = document.getElementById(previewId);
+        if (!workerSelect || !metersInput || !preview) return;
+
+        const workerId = workerSelect.value;
+        const method = (workerMethods[workerId] || '').toLowerCase();
+        const rate = parseFloat(workerRates[workerId] || '0') || 0;
+        const meters = parseFloat(metersInput.value || '0') || 0;
+
+        if (!workerId) {
+            preview.textContent = 'Итого: выберите работника';
+            return;
+        }
+        if (method && method.indexOf('погон') === -1) {
+            preview.textContent = 'Итого: способ оплаты не "погонный метр"';
+            return;
+        }
+        if (!rate) {
+            preview.textContent = 'Итого: ставка не указана';
+            return;
+        }
+
+        const total = rate * meters;
+        preview.textContent = `Итого: ${fmtMoney(rate)} ₽/м × ${fmtMeters(meters)} м = ${fmtMoney(total)} ₽`;
+    }
+
     // Обработчики изменения выбора рабочих
     document.getElementById('id_designer').addEventListener('change', function() {
         updateMethodBadge('id_designer', 'designer-method-badge');
+        updateMetersPreview('id_designer', 'id_designer_manual_salary', 'designer_manual_salary_preview');
     });
 
     document.getElementById('id_designer_worker').addEventListener('change', function() {
         updateMethodBadge('id_designer_worker', 'designer-worker-method-badge');
+        updateMetersPreview('id_designer_worker', 'id_designer_worker_manual_salary', 'designer_worker_manual_salary_preview');
     });
 
     document.getElementById('id_assembler_worker').addEventListener('change', function() {
         updateMethodBadge('id_assembler_worker', 'assembler-worker-method-badge');
+        updateMetersPreview('id_assembler_worker', 'id_assembler_worker_manual_salary', 'assembler_worker_manual_salary_preview');
     });
 
     // Инициализация при загрузке страницы
     updateMethodBadge('id_designer', 'designer-method-badge');
     updateMethodBadge('id_designer_worker', 'designer-worker-method-badge');
     updateMethodBadge('id_assembler_worker', 'assembler-worker-method-badge');
+
+    // Пересчет при вводе метров
+    const designerMeters = document.getElementById('id_designer_manual_salary');
+    if (designerMeters) {
+        designerMeters.addEventListener('input', () => updateMetersPreview('id_designer', 'id_designer_manual_salary', 'designer_manual_salary_preview'));
+    }
+    const designerWorkerMeters = document.getElementById('id_designer_worker_manual_salary');
+    if (designerWorkerMeters) {
+        designerWorkerMeters.addEventListener('input', () => updateMetersPreview('id_designer_worker', 'id_designer_worker_manual_salary', 'designer_worker_manual_salary_preview'));
+    }
+    const assemblerMeters = document.getElementById('id_assembler_worker_manual_salary');
+    if (assemblerMeters) {
+        assemblerMeters.addEventListener('input', () => updateMetersPreview('id_assembler_worker', 'id_assembler_worker_manual_salary', 'assembler_worker_manual_salary_preview'));
+    }
+
+    // Начальный пересчет
+    updateMetersPreview('id_designer', 'id_designer_manual_salary', 'designer_manual_salary_preview');
+    updateMetersPreview('id_designer_worker', 'id_designer_worker_manual_salary', 'designer_worker_manual_salary_preview');
+    updateMetersPreview('id_assembler_worker', 'id_assembler_worker_manual_salary', 'assembler_worker_manual_salary_preview');
 });
 </script>
 {% endblock %}

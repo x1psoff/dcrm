@@ -25,6 +25,7 @@
 
 .product-card .card-header {
   background: #f8f9fa;
+  color: #111;
   border-bottom: 1px solid #dee2e6;
   padding: 1rem 1.25rem;
   font-weight: 600;
@@ -118,6 +119,16 @@
                     <option value="{{ cat.id }}" {% if product.category and product.category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
                   {% endfor %}
                 </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Ссылка <small class="text-muted">(необязательно)</small></label>
+                <input type="url" class="form-control" name="source_url" value="{{ product.source_url|default:'' }}" placeholder="http://... или https://...">
+                {% if product.source_url %}
+                  <small class="text-muted d-block mt-1">
+                    <a href="{{ product.source_url }}" target="_blank" rel="noopener">Открыть ссылку</a>
+                  </small>
+                {% endif %}
               </div>
               
               <hr>

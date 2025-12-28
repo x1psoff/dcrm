@@ -41,6 +41,17 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TZ: ${TZ:-UTC}
       DJANGO_COLLECTSTATIC: ${DJANGO_COLLECTSTATIC:-0}
+      # UFALOFT (optional)
+      UFALOFT_VERIFY_SSL: ${UFALOFT_VERIFY_SSL:-1}
+      UFALOFT_CA_BUNDLE: ${UFALOFT_CA_BUNDLE:-}
+      UFALOFT_SCHEDULE_ENABLED: ${UFALOFT_SCHEDULE_ENABLED:-0}
+      UFALOFT_WATCH_ENABLED: ${UFALOFT_WATCH_ENABLED:-0}
+      UFALOFT_WATCH_INTERVAL_MIN: ${UFALOFT_WATCH_INTERVAL_MIN:-60}
+      UFALOFT_INDEX_FIELD: ${UFALOFT_INDEX_FIELD:-first_name}
+      UFALOFT_VERBOSE: ${UFALOFT_VERBOSE:-1}
+      UFALOFT_HEADLESS: ${UFALOFT_HEADLESS:-1}
+      # Remote Selenium (optional). If set, ufaloft_watch will use webdriver.Remote instead of local Chrome.
+      SELENIUM_REMOTE_URL: ${SELENIUM_REMOTE_URL:-http://selenium:4444/wd/hub}
       # CSRF / proxy settings (optional)
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       SECURE_PROXY_SSL_HEADER: ${SECURE_PROXY_SSL_HEADER:-0}
@@ -118,11 +129,90 @@ services:
       RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-/restic/dcrm}
       RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
       BACKUP_PREFIX: dcrm
-      # Every 6 hours
-      BACKUP_CRON: "0 */6 * * *"
+      # Daily end-of-day backup (incremental, restic-dedup).
+      # Weekly/monthly "full" restore points are achieved via retention policy.
+      BACKUP_CRON: "${BACKUP_CRON:-5 23 * * *}"
       RUN_ON_STARTUP: "1"
-      RETENTION_KEEP_DAILY: "14"
-      RETENTION_KEEP_WEEKLY: "8"
-      RETENTION_KEEP_MONTHLY: "12"
+      # Retention policy (tune as needed):
+      # - keep daily for ~1 month
+      # - keep weekly for ~3 months
+      # - keep monthly for 5 years (law/compliance)
+      RETENTION_KEEP_DAILY: "${RETENTION_KEEP_DAILY:-30}"
+      RETENTION_KEEP_WEEKLY: "${RETENTION_KEEP_WEEKLY:-12}"
+      RETENTION_KEEP_MONTHLY: "${RETENTION_KEEP_MONTHLY:-60}"
+      # Optional: weekly restore integrity check (restores latest snapshot into tmp and checks sqlite integrity)
+      ENABLE_RESTORE_CHECK: "${ENABLE_RESTORE_CHECK:-1}"
+      RESTORE_CHECK_CRON: "${RESTORE_CHECK_CRON:-0 3 * * 0}"
     restart: unless-stopped
+
+  # Optional: high-frequency "near-real-time" backups (e.g., every 15 minutes)
+  # stored in a separate restic repository, so retention differs from long-term archives.
+  backup_orders:
+    image: dcrm-backup:latest
+    profiles: ["backup_orders"]
+    volumes:
+      - ./:/data:ro
+      - ./backups:/restic
+      # Override backup script for high-frequency DB-only backups (atomic sqlite .backup + restic --stdin)
+      - ./docker/backup/run_backup_sqlite_orders.sh:/backup/run_backup_sqlite.sh:ro
+    environment:
+      BACKUP_MODE: sqlite
+      BACKUP_SQLITE_PATH: /data/db.sqlite3
+      BACKUP_MEDIA_PATH: /data/media
+      BACKUP_ENV_PATH: /data/.env
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY_ORDERS:-/restic/dcrm_orders}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      BACKUP_PREFIX: dcrm_orders
+      BACKUP_CRON: "${BACKUP_CRON_ORDERS:-*/15 * * * *}"
+      RUN_ON_STARTUP: "1"
+      # Keep last N snapshots (good for "каждый заказ = версия" when you backup often)
+      RETENTION_KEEP_LAST: "${RETENTION_KEEP_LAST_ORDERS:-2000}"
+      # Run prune at most once per 60 minutes (restic prune can be heavy)
+      PRUNE_INTERVAL_MIN: "${PRUNE_INTERVAL_MIN_ORDERS:-60}"
+      ENABLE_RESTORE_CHECK: "0"
+    restart: unless-stopped
+
+  # Optional: interactive browser on server via noVNC (open from Windows),
+  # so you can login/2FA manually like on Windows GUI.
+  selenium:
+    image: selenium/standalone-chrome:4.25.0
+    shm_size: 2gb
+    restart: unless-stopped
+    environment:
+      SE_VNC_PASSWORD: ${SE_VNC_PASSWORD:-}
+    ports:
+      - "${SELENIUM_WEBDRIVER_PUBLISH:-4444}:4444"  # WebDriver endpoint
+      - "${SELENIUM_NOVNC_PUBLISH:-7900}:7900"      # noVNC in browser
+
+  # UFALOFT watcher as a dedicated long-running service (Linux-side),
+  # keeps the browser session open in selenium and syncs every N minutes.
+  ufaloft:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - web
+      - selenium
+    volumes:
+      - ./db.sqlite3:/data/db.sqlite3
+      - ./media:/data/media
+    environment:
+      DEBUG: ${DEBUG:-true}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DB_PATH: ${DB_PATH:-/data/db.sqlite3}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/data/media}
+      TZ: ${TZ:-UTC}
+      # Remote Selenium (required for this service)
+      SELENIUM_REMOTE_URL: ${SELENIUM_REMOTE_URL:-http://selenium:4444/wd/hub}
+    command:
+      - python
+      - manage.py
+      - ufaloft_watch
+      - --interval-min
+      - "${UFALOFT_WATCH_INTERVAL_MIN:-1}"
+      - --index-field
+      - "${UFALOFT_INDEX_FIELD:-first_name}"
+      - --verbose
 

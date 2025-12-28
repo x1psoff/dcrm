@@ -68,17 +68,17 @@ def calculate_record_margin(record):
                 designer_worker_salary = (record.contract_amount * dw.percentage) / 100
             except Exception:
                 designer_worker_salary = Decimal('0')
-        elif ('м²' in method_name or 'метр' in method_name or (not dw.method and dw.rate_per_square_meter)) and dw.rate_per_square_meter:
-            try:
-                sum_area = Decimal(str(get_record_files_area(record)))
-                designer_worker_salary = (dw.rate_per_square_meter or Decimal('0')) * sum_area
-            except Exception:
-                designer_worker_salary = Decimal('0')
         elif 'погон' in method_name and record.designer_worker_manual_salary is not None:
             try:
                 meters = Decimal(str(record.designer_worker_manual_salary))
                 rate = dw.rate_per_square_meter or Decimal('0')
                 designer_worker_salary = rate * meters
+            except Exception:
+                designer_worker_salary = Decimal('0')
+        elif ('м²' in method_name or 'метр' in method_name or (not dw.method and dw.rate_per_square_meter)) and dw.rate_per_square_meter:
+            try:
+                sum_area = Decimal(str(get_record_files_area(record)))
+                designer_worker_salary = (dw.rate_per_square_meter or Decimal('0')) * sum_area
             except Exception:
                 designer_worker_salary = Decimal('0')
     
@@ -93,17 +93,17 @@ def calculate_record_margin(record):
                 assembler_worker_salary = (record.contract_amount * aw.percentage) / 100
             except Exception:
                 assembler_worker_salary = Decimal('0')
-        elif ('м²' in method_name or 'метр' in method_name or (not aw.method and aw.rate_per_square_meter)) and aw.rate_per_square_meter:
-            try:
-                sum_area = Decimal(str(get_record_files_area(record)))
-                assembler_worker_salary = (aw.rate_per_square_meter or Decimal('0')) * sum_area
-            except Exception:
-                assembler_worker_salary = Decimal('0')
         elif 'погон' in method_name and record.assembler_worker_manual_salary is not None:
             try:
                 meters = Decimal(str(record.assembler_worker_manual_salary))
                 rate = aw.rate_per_square_meter or Decimal('0')
                 assembler_worker_salary = rate * meters
+            except Exception:
+                assembler_worker_salary = Decimal('0')
+        elif ('м²' in method_name or 'метр' in method_name or (not aw.method and aw.rate_per_square_meter)) and aw.rate_per_square_meter:
+            try:
+                sum_area = Decimal(str(get_record_files_area(record)))
+                assembler_worker_salary = (aw.rate_per_square_meter or Decimal('0')) * sum_area
             except Exception:
                 assembler_worker_salary = Decimal('0')
     

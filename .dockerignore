@@ -15,6 +15,7 @@ venv/
 # Local DB / logs
 db.sqlite3
 *.log
+backups/**
 
 # Media uploads / generated exports
 media/*

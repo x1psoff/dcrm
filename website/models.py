@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 
@@ -572,6 +573,42 @@ class Profile(models.Model):
         verbose_name_plural = "Профили пользователей"
 
 
+class TailscaleInviteLink(models.Model):
+    """Одноразовые ссылки для подключения к VPN (Tailscale).
+
+    Ссылка должна выдаваться только 1 раз; после выдачи помечается как использованная.
+    """
+
+    url = models.URLField(unique=True, verbose_name="Ссылка приглашения")
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name="Когда использована")
+    used_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tailscale_invites_used",
+        verbose_name="Кому выдана (user)",
+    )
+
+    class Meta:
+        verbose_name = "Tailscale invite link"
+        verbose_name_plural = "Tailscale invite links"
+        ordering = ["id"]
+
+    def __str__(self):
+        return self.url
+
+    @property
+    def is_used(self):
+        return bool(self.used_at)
+
+    def mark_used(self, user: User | None = None, commit: bool = True):
+        self.used_at = timezone.now()
+        self.used_by = user
+        if commit:
+            self.save(update_fields=["used_at", "used_by"])
+
+
 class WorkerPayment(models.Model):
     """Модель для отслеживания выплат работникам"""
     ROLE_CHOICES = [
@@ -632,3 +669,40 @@ class WorkerPayment(models.Model):
     
     def __str__(self):
         return f"{self.worker.name} {self.worker.surname} - {self.get_role_display()} - {self.amount} ₽ ({'Оплачено' if self.is_paid else 'Не оплачено'})"
+
+
+class WorkerPaymentDeduction(models.Model):
+    """Санкционный вычет из конкретной выплаты работнику (по заказу и роли)."""
+
+    payment = models.ForeignKey(
+        WorkerPayment,
+        on_delete=models.CASCADE,
+        related_name="deductions",
+        verbose_name="Выплата",
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Вычет (₽)",
+    )
+    reason = models.CharField(
+        max_length=300,
+        blank=True,
+        default="",
+        verbose_name="Причина",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+
+    class Meta:
+        verbose_name = "Санкционный вычет"
+        verbose_name_plural = "Санкционные вычеты"
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["payment", "-created_at"], name="website_wor_payment_a1fe61_idx"),
+        ]
+
+    def __str__(self):
+        base = f"{self.amount} ₽"
+        if self.reason:
+            return f"{base} — {self.reason}"
+        return base
